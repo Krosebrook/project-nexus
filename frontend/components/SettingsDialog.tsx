@@ -6,7 +6,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -17,14 +16,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings } from "lucide-react";
 import backend from "~backend/client";
 import type { UserPreferences } from "~backend/settings/types";
 
-export function SettingsDialog() {
+interface SettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [settings, setSettings] = useState<UserPreferences | null>(null);
   const [refreshInterval, setRefreshInterval] = useState(30);
-  const [defaultView, setDefaultView] = useState("projects");
+  const [defaultView, setDefaultView] = useState("dashboard");
 
   useEffect(() => {
     loadSettings();
@@ -54,13 +57,8 @@ export function SettingsDialog() {
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="fixed bottom-6 right-6">
-          <Settings className="h-5 w-5" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="bg-zinc-900 border-zinc-800">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -77,24 +75,24 @@ export function SettingsDialog() {
               onChange={(e) => setRefreshInterval(Number(e.target.value))}
               min={10}
               max={300}
+              className="bg-zinc-800 border-zinc-700"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="view">Default view</Label>
             <Select value={defaultView} onValueChange={setDefaultView}>
-              <SelectTrigger id="view">
+              <SelectTrigger id="view" className="bg-zinc-800 border-zinc-700">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="dashboard">Dashboard</SelectItem>
                 <SelectItem value="projects">Projects</SelectItem>
                 <SelectItem value="automation">Automation</SelectItem>
-                <SelectItem value="observability">Observability</SelectItem>
                 <SelectItem value="deployment">Deployment</SelectItem>
-                <SelectItem value="files">Files</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={saveSettings} className="w-full">
+          <Button onClick={saveSettings} className="w-full bg-blue-600 hover:bg-blue-700">
             Save Changes
           </Button>
         </div>
