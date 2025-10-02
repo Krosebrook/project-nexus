@@ -14,6 +14,9 @@ interface RunTestRequest {
 export const run = api<RunTestRequest & RunTestParams, TestCase>(
   { expose: true, method: "POST", path: "/tests/:id/run" },
   async ({ id, actual_output }) => {
+    if (!actual_output || typeof actual_output !== "object") {
+      throw APIError.invalidArgument("actual_output must be an object");
+    }
     const test = await db.queryRow<TestCase>`
       UPDATE test_cases
       SET actual_output = ${JSON.stringify(actual_output)},

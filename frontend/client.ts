@@ -92,6 +92,8 @@ export interface ClientOptions {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { create as api_alerts_create_create } from "~backend/alerts/create";
+import { deleteRule as api_alerts_delete_deleteRule } from "~backend/alerts/delete";
 import { list as api_alerts_list_list } from "~backend/alerts/list";
 import { toggle as api_alerts_toggle_toggle } from "~backend/alerts/toggle";
 
@@ -102,8 +104,22 @@ export namespace alerts {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.create = this.create.bind(this)
+            this.deleteRule = this.deleteRule.bind(this)
             this.list = this.list.bind(this)
             this.toggle = this.toggle.bind(this)
+        }
+
+        public async create(params: RequestType<typeof api_alerts_create_create>): Promise<ResponseType<typeof api_alerts_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_create_create>
+        }
+
+        public async deleteRule(params: { id: number }): Promise<ResponseType<typeof api_alerts_delete_deleteRule>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_delete_deleteRule>
         }
 
         /**
@@ -136,6 +152,7 @@ export namespace alerts {
  */
 import { getCurrent as api_contexts_get_current_getCurrent } from "~backend/contexts/get_current";
 import { list as api_contexts_list_list } from "~backend/contexts/list";
+import { restore as api_contexts_restore_restore } from "~backend/contexts/restore";
 import { save as api_contexts_save_save } from "~backend/contexts/save";
 
 export namespace contexts {
@@ -147,6 +164,7 @@ export namespace contexts {
             this.baseClient = baseClient
             this.getCurrent = this.getCurrent.bind(this)
             this.list = this.list.bind(this)
+            this.restore = this.restore.bind(this)
             this.save = this.save.bind(this)
         }
 
@@ -166,6 +184,12 @@ export namespace contexts {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/contexts/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_contexts_list_list>
+        }
+
+        public async restore(params: { id: number }): Promise<ResponseType<typeof api_contexts_restore_restore>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/contexts/${encodeURIComponent(params.id)}/restore`, {method: "POST", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_contexts_restore_restore>
         }
 
         /**
@@ -219,8 +243,11 @@ export namespace files {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { create as api_projects_create_create } from "~backend/projects/create";
+import { deleteProject as api_projects_delete_deleteProject } from "~backend/projects/delete";
 import { get as api_projects_get_get } from "~backend/projects/get";
 import { list as api_projects_list_list } from "~backend/projects/list";
+import { metricsStream as api_projects_metrics_metricsStream } from "~backend/projects/metrics";
 import { update as api_projects_update_update } from "~backend/projects/update";
 
 export namespace projects {
@@ -230,9 +257,24 @@ export namespace projects {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.create = this.create.bind(this)
+            this.deleteProject = this.deleteProject.bind(this)
             this.get = this.get.bind(this)
             this.list = this.list.bind(this)
+            this.metricsStream = this.metricsStream.bind(this)
             this.update = this.update.bind(this)
+        }
+
+        public async create(params: RequestType<typeof api_projects_create_create>): Promise<ResponseType<typeof api_projects_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_create_create>
+        }
+
+        public async deleteProject(params: { id: number }): Promise<ResponseType<typeof api_projects_delete_deleteProject>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_delete_deleteProject>
         }
 
         /**
@@ -251,6 +293,15 @@ export namespace projects {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/projects`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_list_list>
+        }
+
+        public async metricsStream(params: RequestType<typeof api_projects_metrics_metricsStream>): Promise<StreamIn<StreamResponse<typeof api_projects_metrics_metricsStream>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "interval_ms": params["interval_ms"] === undefined ? undefined : String(params["interval_ms"]),
+            })
+
+            return await this.baseClient.createStreamIn(`/projects/${encodeURIComponent(params.project_id)}/metrics/stream`, {query})
         }
 
         /**
@@ -313,6 +364,9 @@ export namespace settings {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { batchRun as api_tests_batch_run_batchRun } from "~backend/tests/batch_run";
+import { create as api_tests_create_create } from "~backend/tests/create";
+import { deleteTest as api_tests_delete_deleteTest } from "~backend/tests/delete";
 import { list as api_tests_list_list } from "~backend/tests/list";
 import { run as api_tests_run_run } from "~backend/tests/run";
 
@@ -323,8 +377,29 @@ export namespace tests {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.batchRun = this.batchRun.bind(this)
+            this.create = this.create.bind(this)
+            this.deleteTest = this.deleteTest.bind(this)
             this.list = this.list.bind(this)
             this.run = this.run.bind(this)
+        }
+
+        public async batchRun(params: RequestType<typeof api_tests_batch_run_batchRun>): Promise<ResponseType<typeof api_tests_batch_run_batchRun>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/tests/batch-run`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_batch_run_batchRun>
+        }
+
+        public async create(params: RequestType<typeof api_tests_create_create>): Promise<ResponseType<typeof api_tests_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/tests`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_create_create>
+        }
+
+        public async deleteTest(params: { id: number }): Promise<ResponseType<typeof api_tests_delete_deleteTest>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/tests/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_delete_deleteTest>
         }
 
         /**

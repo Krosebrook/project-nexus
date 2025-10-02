@@ -18,6 +18,18 @@ interface UpdateProjectRequest {
 export const update = api<UpdateProjectRequest & UpdateProjectParams, Project>(
   { expose: true, method: "PUT", path: "/projects/:id" },
   async ({ id, name, description, status, health_score, metrics }) => {
+    if (name !== undefined && !name?.trim()) {
+      throw APIError.invalidArgument("name cannot be empty");
+    }
+    if (status !== undefined) {
+      const validStatuses = ["active", "development", "maintenance", "archived"];
+      if (!validStatuses.includes(status)) {
+        throw APIError.invalidArgument(`status must be one of: ${validStatuses.join(", ")}`);
+      }
+    }
+    if (health_score !== undefined && (health_score < 0 || health_score > 100)) {
+      throw APIError.invalidArgument("health_score must be between 0 and 100");
+    }
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;

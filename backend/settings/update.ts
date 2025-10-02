@@ -1,4 +1,4 @@
-import { api } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import db from "../db";
 import type { UserPreferences } from "./types";
 
@@ -13,6 +13,21 @@ interface UpdateSettingsRequest {
 export const update = api<UpdateSettingsRequest, UserPreferences>(
   { expose: true, method: "PUT", path: "/settings" },
   async ({ refresh_interval, default_view, theme, preferences }) => {
+    if (refresh_interval !== undefined && (refresh_interval < 1 || refresh_interval > 300)) {
+      throw APIError.invalidArgument("refresh_interval must be between 1 and 300 seconds");
+    }
+    if (default_view !== undefined) {
+      const validViews = ["projects", "automation", "observability", "deployment", "files"];
+      if (!validViews.includes(default_view)) {
+        throw APIError.invalidArgument(`default_view must be one of: ${validViews.join(", ")}`);
+      }
+    }
+    if (theme !== undefined) {
+      const validThemes = ["light", "dark", "system"];
+      if (!validThemes.includes(theme)) {
+        throw APIError.invalidArgument(`theme must be one of: ${validThemes.join(", ")}`);
+      }
+    }
     const updates: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;

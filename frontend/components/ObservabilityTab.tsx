@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Bell, BellOff, AlertTriangle } from "lucide-react";
+import { AlertRuleSkeleton } from "@/components/LoadingSkeleton";
+import { useOptimisticUpdate } from "@/hooks/useOptimisticUpdate";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
 import type { AlertRule } from "~backend/alerts/types";
@@ -13,8 +15,8 @@ interface ObservabilityTabProps {
 }
 
 export function ObservabilityTab({ project }: ObservabilityTabProps) {
-  const [alerts, setAlerts] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(true);
+  const { data: alerts, updateOptimistic, commit, rollback } = useOptimisticUpdate<AlertRule>([]);
 
   useEffect(() => {
     loadAlerts();
@@ -23,7 +25,7 @@ export function ObservabilityTab({ project }: ObservabilityTabProps) {
   const loadAlerts = async () => {
     try {
       const { alerts } = await backend.alerts.list({ project_id: project.id });
-      setAlerts(alerts);
+      commit(alerts);
     } catch (error) {
       console.error("Failed to load alerts:", error);
     } finally {
@@ -32,16 +34,25 @@ export function ObservabilityTab({ project }: ObservabilityTabProps) {
   };
 
   const toggleAlert = async (alert: AlertRule) => {
+    updateOptimistic((a) => a.id === alert.id, { enabled: !alert.enabled });
+    
     try {
-      await backend.alerts.toggle({ id: alert.id, enabled: !alert.enabled });
+      const updated = await backend.alerts.toggle({ id: alert.id, enabled: !alert.enabled });
       await loadAlerts();
     } catch (error) {
       console.error("Failed to toggle alert:", error);
+      rollback();
     }
   };
 
   if (loading) {
-    return <div className="text-muted-foreground">Loading alerts...</div>;
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <AlertRuleSkeleton key={i} />
+        ))}
+      </div>
+    );
   }
 
   return (

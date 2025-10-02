@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { MetricCard } from "@/components/MetricCard";
 import { Activity, TrendingUp, Clock, AlertCircle } from "lucide-react";
 import type { Project } from "~backend/projects/types";
 import { formatDistanceToNow } from "date-fns";

@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Play, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { TestCaseSkeleton } from "@/components/LoadingSkeleton";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
 import type { TestCase } from "~backend/tests/types";
@@ -48,6 +49,16 @@ export function AutomationTab({ project }: AutomationTabProps) {
   };
 
   if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <TestCaseSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+
+  if (false) {
     return <div className="text-muted-foreground">Loading tests...</div>;
   }
 

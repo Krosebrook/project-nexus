@@ -14,6 +14,9 @@ interface ToggleAlertRequest {
 export const toggle = api<ToggleAlertRequest & ToggleAlertParams, AlertRule>(
   { expose: true, method: "PUT", path: "/alerts/:id/toggle" },
   async ({ id, enabled }) => {
+    if (typeof enabled !== "boolean") {
+      throw APIError.invalidArgument("enabled must be a boolean");
+    }
     const alert = await db.queryRow<AlertRule>`
       UPDATE alert_rules
       SET enabled = ${enabled}, updated_at = NOW()
