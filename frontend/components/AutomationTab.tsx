@@ -16,12 +16,14 @@ interface AutomationTabProps {
 export function AutomationTab({ project }: AutomationTabProps) {
   const [tests, setTests] = useState<TestCase[]>([]);
   const [loading, setLoading] = useState(true);
+  const [runningTests, setRunningTests] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadTests();
   }, [project.id]);
 
   const loadTests = async () => {
+    setLoading(true);
     try {
       const { tests } = await backend.tests.list({ project_id: project.id });
       setTests(tests);
@@ -29,6 +31,25 @@ export function AutomationTab({ project }: AutomationTabProps) {
       console.error("Failed to load tests:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runTest = async (testId: number) => {
+    setRunningTests(prev => new Set(prev).add(testId));
+    try {
+      await backend.tests.run({ 
+        id: testId,
+        actual_output: {},
+      });
+      await loadTests();
+    } catch (error) {
+      console.error("Failed to run test:", error);
+    } finally {
+      setRunningTests(prev => {
+        const next = new Set(prev);
+        next.delete(testId);
+        return next;
+      });
     }
   };
 
@@ -120,9 +141,14 @@ export function AutomationTab({ project }: AutomationTabProps) {
                   </pre>
                 </div>
               )}
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => runTest(test.id)}
+                disabled={runningTests.has(test.id)}
+              >
                 <Play className="h-3 w-3 mr-2" />
-                Run Test
+                {runningTests.has(test.id) ? "Running..." : "Run Test"}
               </Button>
             </CardContent>
           </Card>

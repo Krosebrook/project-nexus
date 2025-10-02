@@ -15,12 +15,14 @@ export function DeploymentTab({ project }: DeploymentTabProps) {
   const [context, setContext] = useState<ContextSnapshot | null>(null);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadContext();
   }, [project.id]);
 
   const loadContext = async () => {
+    setLoading(true);
     try {
       const { snapshot } = await backend.contexts.getCurrent({ project_id: project.id });
       setContext(snapshot);
@@ -34,8 +36,32 @@ export function DeploymentTab({ project }: DeploymentTabProps) {
     }
   };
 
+  const saveContext = async () => {
+    if (!context) return;
+    
+    setSaving(true);
+    try {
+      await backend.contexts.save({
+        project_id: project.id,
+        work_state: context.work_state,
+        open_files: context.open_files,
+        next_steps: context.next_steps,
+        notes,
+      });
+      await loadContext();
+    } catch (error) {
+      console.error("Failed to save context:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
-    return <div className="text-muted-foreground">Loading context...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading context...</div>
+      </div>
+    );
   }
 
   if (!context) {
@@ -51,9 +77,9 @@ export function DeploymentTab({ project }: DeploymentTabProps) {
           <h2 className="text-2xl font-bold text-foreground">Context Snapshot</h2>
           <p className="text-muted-foreground">Current work state and next steps</p>
         </div>
-        <Button>
+        <Button onClick={saveContext} disabled={saving}>
           <Save className="h-4 w-4 mr-2" />
-          Save Context
+          {saving ? "Saving..." : "Save Context"}
         </Button>
       </div>
 

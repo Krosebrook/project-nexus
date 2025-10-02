@@ -19,6 +19,7 @@ export function FilesTab({ project }: FilesTabProps) {
   }, [project.id]);
 
   const loadMoves = async () => {
+    setLoading(true);
     try {
       const { moves } = await backend.files.list({ project_id: project.id });
       setMoves(moves);
@@ -30,7 +31,11 @@ export function FilesTab({ project }: FilesTabProps) {
   };
 
   if (loading) {
-    return <div className="text-muted-foreground">Loading file history...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-muted-foreground">Loading file history...</div>
+      </div>
+    );
   }
 
   return (
