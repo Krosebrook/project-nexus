@@ -4,7 +4,7 @@ import path from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "jsdom",
+    environment: "node",
     setupFiles: ["./frontend/test-setup.ts"],
     include: ["**/*.test.{ts,tsx}", "**/__tests__/**/*.{ts,tsx}"],
     coverage: {
