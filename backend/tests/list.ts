@@ -12,7 +12,7 @@ interface ListTestsResponse {
 
 // Retrieves all test cases for a project.
 export const list = api<ListTestsParams, ListTestsResponse>(
-  { expose: true, method: "GET", path: "/tests/:project_id" },
+  { expose: true, method: "GET", path: "/tests/project/:project_id" },
   async ({ project_id }) => {
     const tests = await db.queryAll<TestCase>`
       SELECT id, project_id, name, input, expected_output, actual_output, status, last_run, created_at, updated_at

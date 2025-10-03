@@ -160,7 +160,7 @@ async function detectCycle(fromId: number, toId: number): Promise<boolean> {
 }
 
 export const removeDependency = api(
-  { method: "DELETE", path: "/dependencies/:id", expose: true },
+  { method: "DELETE", path: "/dependencies/remove/:id", expose: true },
   async ({ id }: { id: number }): Promise<void> => {
 
     

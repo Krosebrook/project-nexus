@@ -214,7 +214,7 @@ export namespace alerts {
          */
         public async list(params: { project_id: number }): Promise<ResponseType<typeof api_alerts_list_list>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/alerts/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/alerts/project/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_list_list>
         }
 
@@ -873,7 +873,7 @@ export namespace deployments {
 
         public async listEnvironments(params: { projectId: number }): Promise<ResponseType<typeof api_deployments_environments_listEnvironments>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/environments/${encodeURIComponent(params.projectId)}`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/environments/project/${encodeURIComponent(params.projectId)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_environments_listEnvironments>
         }
 
@@ -884,7 +884,7 @@ export namespace deployments {
             })
 
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/incidents/${encodeURIComponent(params.projectId)}`, {query, method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/incidents/project/${encodeURIComponent(params.projectId)}`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_incidents_listIncidents>
         }
 
@@ -956,7 +956,7 @@ export namespace deployments {
         }
 
         public async removeDependency(params: { id: number }): Promise<void> {
-            await this.baseClient.callTypedAPI(`/dependencies/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            await this.baseClient.callTypedAPI(`/dependencies/remove/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
         }
 
         public async rollback(params: RequestType<typeof api_deployments_rollback_rollback>): Promise<ResponseType<typeof api_deployments_rollback_rollback>> {
@@ -1344,7 +1344,7 @@ export namespace tests {
          */
         public async list(params: { project_id: number }): Promise<ResponseType<typeof api_tests_list_list>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/tests/project/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_list_list>
         }
 

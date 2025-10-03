@@ -51,7 +51,7 @@ interface ListIncidentsResponse {
 }
 
 export const listIncidents = api(
-  { method: "GET", path: "/incidents/:projectId", expose: true },
+  { method: "GET", path: "/incidents/project/:projectId", expose: true },
   async ({ projectId, status }: { projectId: number; status?: IncidentStatus }): Promise<ListIncidentsResponse> => {
 
     

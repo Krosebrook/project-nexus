@@ -52,7 +52,7 @@ interface ListEnvironmentsResponse {
 }
 
 export const listEnvironments = api(
-  { method: "GET", path: "/environments/:projectId", expose: true },
+  { method: "GET", path: "/environments/project/:projectId", expose: true },
   async ({ projectId }: { projectId: number }): Promise<ListEnvironmentsResponse> => {
 
     
