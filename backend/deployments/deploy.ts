@@ -6,8 +6,8 @@ export const deploy = api(
   { method: "POST", path: "/deployments/deploy", expose: true },
   async (req: DeployRequest): Promise<DeploymentProgress> => {
     const result = await db.queryRow<{ id: number }>`
-      INSERT INTO deployment_logs (project_id, environment, status, stage, progress)
-      VALUES (${req.project_id}, ${req.environment}, 'running', 'build', 0)
+      INSERT INTO deployment_logs (project_id, environment, status, stage, progress, logs)
+      VALUES (${req.project_id}, ${req.environment}, 'running', 'build', 0, 'Starting deployment...\n')
       RETURNING id
     `;
     if (!result) throw new Error('Failed to create deployment');
