@@ -35,9 +35,11 @@ const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
 export class Client {
     public readonly alerts: alerts.ServiceClient
     public readonly contexts: contexts.ServiceClient
+    public readonly deployments: deployments.ServiceClient
     public readonly files: files.ServiceClient
     public readonly projects: projects.ServiceClient
     public readonly settings: settings.ServiceClient
+    public readonly snapshots: snapshots.ServiceClient
     public readonly tests: tests.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
@@ -55,9 +57,11 @@ export class Client {
         const base = new BaseClient(this.target, this.options)
         this.alerts = new alerts.ServiceClient(base)
         this.contexts = new contexts.ServiceClient(base)
+        this.deployments = new deployments.ServiceClient(base)
         this.files = new files.ServiceClient(base)
         this.projects = new projects.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
+        this.snapshots = new snapshots.ServiceClient(base)
         this.tests = new tests.ServiceClient(base)
     }
 
@@ -199,6 +203,51 @@ export namespace contexts {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/contexts`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_contexts_save_save>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { deploy as api_deployments_deploy_deploy } from "~backend/deployments/deploy";
+import { logs as api_deployments_logs_logs } from "~backend/deployments/logs";
+import { status as api_deployments_status_status } from "~backend/deployments/status";
+
+export namespace deployments {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.deploy = this.deploy.bind(this)
+            this.logs = this.logs.bind(this)
+            this.status = this.status.bind(this)
+        }
+
+        public async deploy(params: RequestType<typeof api_deployments_deploy_deploy>): Promise<ResponseType<typeof api_deployments_deploy_deploy>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/deploy`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_deploy_deploy>
+        }
+
+        public async logs(params: RequestType<typeof api_deployments_logs_logs>): Promise<ResponseType<typeof api_deployments_logs_logs>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                level:        params.level,
+                "time_range": params["time_range"],
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/logs/${encodeURIComponent(params.project_id)}`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_logs_logs>
+        }
+
+        public async status(params: { id: number }): Promise<ResponseType<typeof api_deployments_status_status>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/${encodeURIComponent(params.id)}/status`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_status_status>
         }
     }
 }
@@ -357,6 +406,45 @@ export namespace settings {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/settings`, {method: "PUT", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_settings_update_update>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { del as api_snapshots_delete_del } from "~backend/snapshots/delete";
+import { list as api_snapshots_list_list } from "~backend/snapshots/list";
+import { save as api_snapshots_save_save } from "~backend/snapshots/save";
+
+export namespace snapshots {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.del = this.del.bind(this)
+            this.list = this.list.bind(this)
+            this.save = this.save.bind(this)
+        }
+
+        public async del(params: { id: number }): Promise<ResponseType<typeof api_snapshots_delete_del>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/snapshots/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_snapshots_delete_del>
+        }
+
+        public async list(): Promise<ResponseType<typeof api_snapshots_list_list>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/snapshots`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_snapshots_list_list>
+        }
+
+        public async save(params: RequestType<typeof api_snapshots_save_save>): Promise<ResponseType<typeof api_snapshots_save_save>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/snapshots`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_snapshots_save_save>
         }
     }
 }
