@@ -14,6 +14,10 @@ import { DocsPanel } from "@/components/DocsPanel";
 import { AlertBanner } from "@/components/AlertBanner";
 import { CommandPalette } from "@/components/CommandPalette";
 import { ProjectDetailModal } from "@/components/ProjectDetailModal";
+import { NetworkErrorBanner } from "@/components/NetworkErrorBanner";
+import { FirstVisitTour } from "@/components/FirstVisitTour";
+import { SkipToContent } from "@/components/SkipToContent";
+import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { Button } from "@/components/ui/button";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
@@ -38,17 +42,20 @@ export default function App() {
 
   useEffect(() => {
     loadProjects();
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCommandPaletteOpen(true);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useKeyboardShortcut([
+    { key: 'k', meta: true, callback: () => setCommandPaletteOpen(true) },
+    { key: 's', meta: true, callback: () => setSnapshotPanelOpen(true) },
+    { key: 'Escape', callback: () => {
+      setCommandPaletteOpen(false);
+      setSnapshotPanelOpen(false);
+      setDeployModalOpen(false);
+      setLogsModalOpen(false);
+      setDocsPanelOpen(false);
+      setProjectDetailModalOpen(false);
+    }}
+  ]);
 
   useEffect(() => {
     const critical = projects.find(p => p.status === 'critical');
@@ -142,6 +149,9 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <SkipToContent />
+      <NetworkErrorBanner />
+      <FirstVisitTour />
       <div className="dark min-h-screen bg-[#0a0a0a] text-foreground">
         <AlertBanner project={criticalProject} onViewDetails={handleAlertViewDetails} />
         
@@ -160,7 +170,7 @@ export default function App() {
                 PROJECT NEXUS
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2" data-tour="settings">
               <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-medium">
                 UN
               </div>
@@ -175,6 +185,7 @@ export default function App() {
               transition-transform duration-300 ease-in-out z-40
               ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
             `}
+            data-tour="projects"
           >
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
@@ -191,8 +202,12 @@ export default function App() {
                         : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
                       }
                     `}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-label={`Navigate to ${item.label}`}
+                    tabIndex={isActive ? 0 : -1}
                   >
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-5 h-5" aria-hidden="true" />
                     <span className="font-medium">{item.label}</span>
                   </button>
                 );
@@ -207,7 +222,7 @@ export default function App() {
             />
           )}
 
-          <main className="flex-1 p-6 lg:p-8">
+          <main id="main-content" className="flex-1 p-6 lg:p-8" data-tour="dashboard" role="main" aria-label="Main content">
             {activeTab === "dashboard" && (
               <ErrorBoundary>
                 <Dashboard projects={projects} onProjectSelect={handleProjectSelect} />
@@ -257,14 +272,16 @@ export default function App() {
 
         <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
         
-        <ContextSnapshotPanel
-          isOpen={snapshotPanelOpen}
-          onClose={() => setSnapshotPanelOpen(false)}
-          currentProject={selectedProject}
-          onRestore={handleRestoreSnapshot}
-        />
-        
-        <ContextSnapshotFAB onClick={() => setSnapshotPanelOpen(true)} />
+        <div data-tour="context">
+          <ContextSnapshotPanel
+            isOpen={snapshotPanelOpen}
+            onClose={() => setSnapshotPanelOpen(false)}
+            currentProject={selectedProject}
+            onRestore={handleRestoreSnapshot}
+          />
+          
+          <ContextSnapshotFAB onClick={() => setSnapshotPanelOpen(true)} />
+        </div>
         
         <DeployModal
           isOpen={deployModalOpen}

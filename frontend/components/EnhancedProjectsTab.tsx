@@ -11,15 +11,19 @@ import {
   formatLastUpdated,
   type HistoricalMetrics 
 } from "@/lib/metrics-utils";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, FolderOpen, Search } from "lucide-react";
+import { EmptyState } from "./EmptyState";
+import { SkeletonCard } from "./SkeletonCard";
 import { cn } from "@/lib/utils";
 
 interface EnhancedProjectsTabProps {
   projects: Project[];
   onProjectUpdate: () => void;
+  isLoading?: boolean;
+  onCreateProject?: () => void;
 }
 
-export function EnhancedProjectsTab({ projects, onProjectUpdate }: EnhancedProjectsTabProps) {
+export function EnhancedProjectsTab({ projects, onProjectUpdate, isLoading = false, onCreateProject }: EnhancedProjectsTabProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [enhancedProjects, setEnhancedProjects] = useState<Project[]>(projects);
   const [historicalMetrics, setHistoricalMetrics] = useState<Map<number, HistoricalMetrics>>(new Map());
@@ -170,13 +174,33 @@ export function EnhancedProjectsTab({ projects, onProjectUpdate }: EnhancedProje
         </div>
       </div>
       
-      {filteredAndSortedProjects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-muted-foreground mb-2">No projects match your filters</div>
-          <div className="text-sm text-muted-foreground">
-            Try adjusting your search or filter criteria
-          </div>
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : enhancedProjects.length === 0 ? (
+        <EmptyState
+          icon={FolderOpen}
+          title="No projects yet"
+          description="Create your first project to get started with deployment tracking and monitoring."
+          action={onCreateProject ? {
+            label: "Create Project",
+            onClick: onCreateProject
+          } : undefined}
+        />
+      ) : filteredAndSortedProjects.length === 0 ? (
+        <EmptyState
+          icon={Search}
+          title={`No results found${searchQuery ? ` for "${searchQuery}"` : ""}`}
+          description="Try adjusting your search or filter criteria."
+          action={{
+            label: "Clear Filters",
+            onClick: () => {
+              setSearchQuery("");
+              setStatusFilter("all");
+            }
+          }}
+        />
       ) : (
         <div className={cn(
           viewMode === "grid" 
