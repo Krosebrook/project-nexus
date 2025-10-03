@@ -23,10 +23,33 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error, errorInfo: null };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  async componentDidCatch(error: Error, errorInfo: any) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
     console.error("Stack trace:", error.stack);
     this.setState({ errorInfo });
+
+    try {
+      const backend = (await import("~backend/client")).default;
+      await backend.errors.logError({
+        error_type: error.name || "UnknownError",
+        error_message: error.message,
+        error_stack: error.stack,
+        component_stack: errorInfo?.componentStack,
+        url: window.location.href,
+        user_agent: navigator.userAgent,
+        severity: "error",
+        metadata: {
+          browser: navigator.userAgent,
+          timestamp: new Date().toISOString(),
+          viewport: {
+            width: window.innerWidth,
+            height: window.innerHeight
+          }
+        }
+      });
+    } catch (logError) {
+      console.error("Failed to log error to backend:", logError);
+    }
   }
 
   handleReload = () => {
