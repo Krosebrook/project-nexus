@@ -1,51 +1,63 @@
 import { api } from "encore.dev/api";
-import db from "../db";
-import type { DeployRequest, DeploymentProgress } from "./types";
+import database from "../db";
+import type { DeployRequest, DeploymentProgress, DeploymentLog } from "./types";
+import { DeploymentStateMachine } from "./state-machine";
+import { autoDetectFailure } from "./rollback";
 
 export const deploy = api(
   { method: "POST", path: "/deployments/deploy", expose: true },
   async (req: DeployRequest): Promise<DeploymentProgress> => {
-    const result = await db.queryRow<{ id: number }>`
-      INSERT INTO deployment_logs (project_id, environment, status, stage, progress)
-      VALUES (${req.project_id}, ${req.environment}, 'running', 'build', 0)
+    const result = await database.queryRow<{ id: number }>`
+      INSERT INTO deployment_logs (
+        project_id, 
+        environment_id, 
+        status, 
+        stage, 
+        progress,
+        started_at,
+        logs
+      )
+      VALUES (
+        ${req.project_id}, 
+        ${req.environment_id}, 
+        'in_progress', 
+        'validation', 
+        0,
+        NOW(),
+        'Starting deployment...\n'
+      )
       RETURNING id
     `;
-    if (!result) throw new Error('Failed to create deployment');
+    
+    if (!result) {
+      throw new Error('Failed to create deployment');
+    }
 
+    const stateMachine = new DeploymentStateMachine();
+    
     setTimeout(async () => {
-      await simulateDeployment(result.id);
+      try {
+        await stateMachine.execute({
+          deploymentId: result.id,
+          projectId: req.project_id,
+          environmentId: req.environment_id
+        });
+      } catch (error) {
+        const shouldRollback = await autoDetectFailure(result.id);
+        
+        if (shouldRollback) {
+          const { rollback } = await import("./rollback");
+          await rollback({ deployment_id: result.id, id: result.id, reason: "Automatic rollback due to deployment failure" });
+        }
+      }
     }, 100);
 
     return {
       id: result.id,
-      status: 'running',
-      stage: 'build',
+      status: 'in_progress',
+      stage: 'validation',
       progress: 0,
       logs: 'Starting deployment...\n'
     };
   }
 );
-
-async function simulateDeployment(deploymentId: number) {
-  const stages = [
-    { stage: 'build', duration: 3000, progress: 33 },
-    { stage: 'test', duration: 2000, progress: 66 },
-    { stage: 'deploy', duration: 2000, progress: 100 }
-  ];
-
-  for (const { stage, duration, progress } of stages) {
-    await new Promise(resolve => setTimeout(resolve, duration));
-    await db.exec`
-      UPDATE deployment_logs
-      SET stage = ${stage}, progress = ${progress}, 
-          logs = logs || ${`${stage} stage completed\n`}
-      WHERE id = ${deploymentId}
-    `;
-  }
-
-  await db.exec`
-    UPDATE deployment_logs
-    SET status = 'success'
-    WHERE id = ${deploymentId}
-  `;
-}

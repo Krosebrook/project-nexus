@@ -20,7 +20,7 @@ interface DeployModalProps {
 }
 
 export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
-  const [environment, setEnvironment] = useState<string>('staging');
+  const [environment, setEnvironment] = useState<number>(1);
   const [checklist, setChecklist] = useState({
     tests_passed: false,
     breaking_changes_documented: false,
@@ -64,7 +64,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
   }, [deploymentId, deploying]);
 
   const resetState = () => {
-    setEnvironment('staging');
+    setEnvironment(2);
     setChecklist({
       tests_passed: false,
       breaking_changes_documented: false,
@@ -87,7 +87,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
     try {
       const result = await backend.deployments.deploy({
         project_id: project.id,
-        environment,
+        environment_id: environment,
         checklist
       });
       setDeploymentId(result.id);
@@ -132,13 +132,14 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Environment</label>
-                <Select value={environment} onValueChange={setEnvironment}>
+                <Select value={environment.toString()} onValueChange={(v) => setEnvironment(parseInt(v, 10))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="staging">Staging</SelectItem>
-                    <SelectItem value="production">Production</SelectItem>
+                    <SelectItem value="1">Development</SelectItem>
+                    <SelectItem value="2">Staging</SelectItem>
+                    <SelectItem value="3">Production</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -191,7 +192,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
                 className="w-full"
               >
                 <Rocket className="w-4 h-4 mr-2" />
-                Confirm Deploy to {environment.charAt(0).toUpperCase() + environment.slice(1)}
+                Confirm Deploy to {['Development', 'Staging', 'Production'][environment - 1]}
               </Button>
             </>
           ) : (
