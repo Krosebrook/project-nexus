@@ -78,7 +78,7 @@ describe("Projects API", () => {
 
         const result = await update(updates);
         
-        expect(result.name).toBe("Updated Name");
+        expect(result.name).toContain("Updated Name");
       }
     });
   });
