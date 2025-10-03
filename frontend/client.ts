@@ -34,13 +34,18 @@ const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
  */
 export class Client {
     public readonly alerts: alerts.ServiceClient
+    public readonly approvals: approvals.ServiceClient
+    public readonly backups: backups.ServiceClient
+    public readonly collaboration: collaboration.ServiceClient
     public readonly contexts: contexts.ServiceClient
     public readonly deployments: deployments.ServiceClient
+    public readonly errors: errors.ServiceClient
     public readonly files: files.ServiceClient
     public readonly projects: projects.ServiceClient
     public readonly settings: settings.ServiceClient
     public readonly snapshots: snapshots.ServiceClient
     public readonly tests: tests.ServiceClient
+    public readonly widgets: widgets.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
 
@@ -56,13 +61,18 @@ export class Client {
         this.options = options ?? {}
         const base = new BaseClient(this.target, this.options)
         this.alerts = new alerts.ServiceClient(base)
+        this.approvals = new approvals.ServiceClient(base)
+        this.backups = new backups.ServiceClient(base)
+        this.collaboration = new collaboration.ServiceClient(base)
         this.contexts = new contexts.ServiceClient(base)
         this.deployments = new deployments.ServiceClient(base)
+        this.errors = new errors.ServiceClient(base)
         this.files = new files.ServiceClient(base)
         this.projects = new projects.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
         this.snapshots = new snapshots.ServiceClient(base)
         this.tests = new tests.ServiceClient(base)
+        this.widgets = new widgets.ServiceClient(base)
     }
 
     /**
@@ -96,8 +106,28 @@ export interface ClientOptions {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import {
+    createAction as api_alerts_actions_createAction,
+    listActions as api_alerts_actions_listActions,
+    toggleAction as api_alerts_actions_toggleAction
+} from "~backend/alerts/actions";
+import {
+    createCondition as api_alerts_conditions_createCondition,
+    deleteCondition as api_alerts_conditions_deleteCondition,
+    listConditions as api_alerts_conditions_listConditions
+} from "~backend/alerts/conditions";
 import { create as api_alerts_create_create } from "~backend/alerts/create";
 import { deleteRule as api_alerts_delete_deleteRule } from "~backend/alerts/delete";
+import {
+    createEscalation as api_alerts_escalations_createEscalation,
+    listEscalations as api_alerts_escalations_listEscalations
+} from "~backend/alerts/escalations";
+import { evaluateRule as api_alerts_evaluate_evaluateRule } from "~backend/alerts/evaluate";
+import {
+    createHistory as api_alerts_history_createHistory,
+    listHistory as api_alerts_history_listHistory,
+    resolveAlert as api_alerts_history_resolveAlert
+} from "~backend/alerts/history";
 import { list as api_alerts_list_list } from "~backend/alerts/list";
 import { toggle as api_alerts_toggle_toggle } from "~backend/alerts/toggle";
 
@@ -109,9 +139,21 @@ export namespace alerts {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.create = this.create.bind(this)
+            this.createAction = this.createAction.bind(this)
+            this.createCondition = this.createCondition.bind(this)
+            this.createEscalation = this.createEscalation.bind(this)
+            this.createHistory = this.createHistory.bind(this)
+            this.deleteCondition = this.deleteCondition.bind(this)
             this.deleteRule = this.deleteRule.bind(this)
+            this.evaluateRule = this.evaluateRule.bind(this)
             this.list = this.list.bind(this)
+            this.listActions = this.listActions.bind(this)
+            this.listConditions = this.listConditions.bind(this)
+            this.listEscalations = this.listEscalations.bind(this)
+            this.listHistory = this.listHistory.bind(this)
+            this.resolveAlert = this.resolveAlert.bind(this)
             this.toggle = this.toggle.bind(this)
+            this.toggleAction = this.toggleAction.bind(this)
         }
 
         public async create(params: RequestType<typeof api_alerts_create_create>): Promise<ResponseType<typeof api_alerts_create_create>> {
@@ -120,10 +162,49 @@ export namespace alerts {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_create_create>
         }
 
+        public async createAction(params: RequestType<typeof api_alerts_actions_createAction>): Promise<ResponseType<typeof api_alerts_actions_createAction>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/actions`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_actions_createAction>
+        }
+
+        public async createCondition(params: RequestType<typeof api_alerts_conditions_createCondition>): Promise<ResponseType<typeof api_alerts_conditions_createCondition>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/conditions`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_conditions_createCondition>
+        }
+
+        public async createEscalation(params: RequestType<typeof api_alerts_escalations_createEscalation>): Promise<ResponseType<typeof api_alerts_escalations_createEscalation>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/escalations`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_escalations_createEscalation>
+        }
+
+        public async createHistory(params: RequestType<typeof api_alerts_history_createHistory>): Promise<ResponseType<typeof api_alerts_history_createHistory>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/history`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_history_createHistory>
+        }
+
+        public async deleteCondition(params: { condition_id: number }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/alerts/conditions/${encodeURIComponent(params.condition_id)}`, {method: "DELETE", body: undefined})
+        }
+
         public async deleteRule(params: { id: number }): Promise<ResponseType<typeof api_alerts_delete_deleteRule>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/alerts/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_delete_deleteRule>
+        }
+
+        public async evaluateRule(params: RequestType<typeof api_alerts_evaluate_evaluateRule>): Promise<ResponseType<typeof api_alerts_evaluate_evaluateRule>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "current_metrics": params["current_metrics"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/rules/${encodeURIComponent(params.alert_rule_id)}/evaluate`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_evaluate_evaluateRule>
         }
 
         /**
@@ -133,6 +214,42 @@ export namespace alerts {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/alerts/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_list_list>
+        }
+
+        public async listActions(params: { alert_rule_id: number }): Promise<ResponseType<typeof api_alerts_actions_listActions>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/rules/${encodeURIComponent(params.alert_rule_id)}/actions`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_actions_listActions>
+        }
+
+        public async listConditions(params: { alert_rule_id: number }): Promise<ResponseType<typeof api_alerts_conditions_listConditions>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/rules/${encodeURIComponent(params.alert_rule_id)}/conditions`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_conditions_listConditions>
+        }
+
+        public async listEscalations(params: { alert_rule_id: number }): Promise<ResponseType<typeof api_alerts_escalations_listEscalations>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/rules/${encodeURIComponent(params.alert_rule_id)}/escalations`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_escalations_listEscalations>
+        }
+
+        public async listHistory(params: RequestType<typeof api_alerts_history_listHistory>): Promise<ResponseType<typeof api_alerts_history_listHistory>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "alert_rule_id": params["alert_rule_id"] === undefined ? undefined : String(params["alert_rule_id"]),
+                limit:           params.limit === undefined ? undefined : String(params.limit),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/history`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_history_listHistory>
+        }
+
+        public async resolveAlert(params: { history_id: number }): Promise<ResponseType<typeof api_alerts_history_resolveAlert>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/history/${encodeURIComponent(params.history_id)}/resolve`, {method: "PATCH", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_history_resolveAlert>
         }
 
         /**
@@ -147,6 +264,321 @@ export namespace alerts {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/alerts/${encodeURIComponent(params.id)}/toggle`, {method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_toggle_toggle>
+        }
+
+        public async toggleAction(params: RequestType<typeof api_alerts_actions_toggleAction>): Promise<ResponseType<typeof api_alerts_actions_toggleAction>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "is_enabled": params["is_enabled"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/alerts/actions/${encodeURIComponent(params.action_id)}/toggle`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_alerts_actions_toggleAction>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { approve as api_approvals_approve_approve } from "~backend/approvals/approve";
+import { create as api_approvals_create_create } from "~backend/approvals/create";
+import { list as api_approvals_list_list } from "~backend/approvals/list";
+import { reject as api_approvals_reject_reject } from "~backend/approvals/reject";
+import {
+    createRule as api_approvals_rules_createRule,
+    listRules as api_approvals_rules_listRules,
+    updateRule as api_approvals_rules_updateRule
+} from "~backend/approvals/rules";
+
+export namespace approvals {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.approve = this.approve.bind(this)
+            this.create = this.create.bind(this)
+            this.createRule = this.createRule.bind(this)
+            this.list = this.list.bind(this)
+            this.listRules = this.listRules.bind(this)
+            this.reject = this.reject.bind(this)
+            this.updateRule = this.updateRule.bind(this)
+        }
+
+        public async approve(params: RequestType<typeof api_approvals_approve_approve>): Promise<ResponseType<typeof api_approvals_approve_approve>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                comment:   params.comment,
+                "user_id": params["user_id"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals/${encodeURIComponent(params.approval_id)}/approve`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_approve_approve>
+        }
+
+        public async create(params: RequestType<typeof api_approvals_create_create>): Promise<ResponseType<typeof api_approvals_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_create_create>
+        }
+
+        public async createRule(params: RequestType<typeof api_approvals_rules_createRule>): Promise<ResponseType<typeof api_approvals_rules_createRule>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals/rules`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_rules_createRule>
+        }
+
+        public async list(params: RequestType<typeof api_approvals_list_list>): Promise<ResponseType<typeof api_approvals_list_list>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "deployment_id": params["deployment_id"] === undefined ? undefined : String(params["deployment_id"]),
+                limit:           params.limit === undefined ? undefined : String(params.limit),
+                status:          params.status,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_list_list>
+        }
+
+        public async listRules(params: RequestType<typeof api_approvals_rules_listRules>): Promise<ResponseType<typeof api_approvals_rules_listRules>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "project_id": params["project_id"] === undefined ? undefined : String(params["project_id"]),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals/rules`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_rules_listRules>
+        }
+
+        public async reject(params: RequestType<typeof api_approvals_reject_reject>): Promise<ResponseType<typeof api_approvals_reject_reject>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                reason:    params.reason,
+                "user_id": params["user_id"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals/${encodeURIComponent(params.approval_id)}/reject`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_reject_reject>
+        }
+
+        public async updateRule(params: RequestType<typeof api_approvals_rules_updateRule>): Promise<ResponseType<typeof api_approvals_rules_updateRule>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "is_active": params["is_active"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/approvals/rules/${encodeURIComponent(params.rule_id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_approvals_rules_updateRule>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { create as api_backups_create_create } from "~backend/backups/create";
+import { deleteBackup as api_backups_delete_deleteBackup } from "~backend/backups/delete";
+import { list as api_backups_list_list } from "~backend/backups/list";
+import { restore as api_backups_restore_restore } from "~backend/backups/restore";
+
+export namespace backups {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.create = this.create.bind(this)
+            this.deleteBackup = this.deleteBackup.bind(this)
+            this.list = this.list.bind(this)
+            this.restore = this.restore.bind(this)
+        }
+
+        public async create(params: RequestType<typeof api_backups_create_create>): Promise<ResponseType<typeof api_backups_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/backups`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_backups_create_create>
+        }
+
+        public async deleteBackup(params: { backup_id: number }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/backups/${encodeURIComponent(params.backup_id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async list(params: RequestType<typeof api_backups_list_list>): Promise<ResponseType<typeof api_backups_list_list>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "backup_type": params["backup_type"],
+                limit:         params.limit === undefined ? undefined : String(params.limit),
+                offset:        params.offset === undefined ? undefined : String(params.offset),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/backups`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_backups_list_list>
+        }
+
+        public async restore(params: RequestType<typeof api_backups_restore_restore>): Promise<ResponseType<typeof api_backups_restore_restore>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                confirm:       params.confirm,
+                "restored_by": params["restored_by"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/backups/${encodeURIComponent(params.backup_id)}/restore`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_backups_restore_restore>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import {
+    listActivity as api_collaboration_activity_listActivity,
+    logActivity as api_collaboration_activity_logActivity
+} from "~backend/collaboration/activity";
+import {
+    createComment as api_collaboration_comments_createComment,
+    listComments as api_collaboration_comments_listComments,
+    resolveComment as api_collaboration_comments_resolveComment
+} from "~backend/collaboration/comments";
+import {
+    addMember as api_collaboration_members_addMember,
+    listMembers as api_collaboration_members_listMembers,
+    removeMember as api_collaboration_members_removeMember
+} from "~backend/collaboration/members";
+import {
+    listPresence as api_collaboration_presence_listPresence,
+    updatePresence as api_collaboration_presence_updatePresence
+} from "~backend/collaboration/presence";
+import {
+    createUser as api_collaboration_users_createUser,
+    getUser as api_collaboration_users_getUser,
+    listUsers as api_collaboration_users_listUsers
+} from "~backend/collaboration/users";
+
+export namespace collaboration {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.addMember = this.addMember.bind(this)
+            this.createComment = this.createComment.bind(this)
+            this.createUser = this.createUser.bind(this)
+            this.getUser = this.getUser.bind(this)
+            this.listActivity = this.listActivity.bind(this)
+            this.listComments = this.listComments.bind(this)
+            this.listMembers = this.listMembers.bind(this)
+            this.listPresence = this.listPresence.bind(this)
+            this.listUsers = this.listUsers.bind(this)
+            this.logActivity = this.logActivity.bind(this)
+            this.removeMember = this.removeMember.bind(this)
+            this.resolveComment = this.resolveComment.bind(this)
+            this.updatePresence = this.updatePresence.bind(this)
+        }
+
+        public async addMember(params: RequestType<typeof api_collaboration_members_addMember>): Promise<ResponseType<typeof api_collaboration_members_addMember>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/members`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_members_addMember>
+        }
+
+        public async createComment(params: RequestType<typeof api_collaboration_comments_createComment>): Promise<ResponseType<typeof api_collaboration_comments_createComment>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/comments`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_comments_createComment>
+        }
+
+        public async createUser(params: RequestType<typeof api_collaboration_users_createUser>): Promise<ResponseType<typeof api_collaboration_users_createUser>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/users`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_users_createUser>
+        }
+
+        public async getUser(params: { user_id: string }): Promise<ResponseType<typeof api_collaboration_users_getUser>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/users/${encodeURIComponent(params.user_id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_users_getUser>
+        }
+
+        public async listActivity(params: RequestType<typeof api_collaboration_activity_listActivity>): Promise<ResponseType<typeof api_collaboration_activity_listActivity>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:        params.limit === undefined ? undefined : String(params.limit),
+                "project_id": params["project_id"] === undefined ? undefined : String(params["project_id"]),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/activity`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_activity_listActivity>
+        }
+
+        public async listComments(params: RequestType<typeof api_collaboration_comments_listComments>): Promise<ResponseType<typeof api_collaboration_comments_listComments>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "entity_id":   String(params["entity_id"]),
+                "entity_type": params["entity_type"],
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/comments`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_comments_listComments>
+        }
+
+        public async listMembers(params: { project_id: number }): Promise<ResponseType<typeof api_collaboration_members_listMembers>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/projects/${encodeURIComponent(params.project_id)}/members`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_members_listMembers>
+        }
+
+        public async listPresence(params: RequestType<typeof api_collaboration_presence_listPresence>): Promise<ResponseType<typeof api_collaboration_presence_listPresence>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "project_id": params["project_id"] === undefined ? undefined : String(params["project_id"]),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/presence`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_presence_listPresence>
+        }
+
+        public async listUsers(): Promise<ResponseType<typeof api_collaboration_users_listUsers>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/users`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_users_listUsers>
+        }
+
+        public async logActivity(params: RequestType<typeof api_collaboration_activity_logActivity>): Promise<ResponseType<typeof api_collaboration_activity_logActivity>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/activity`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_activity_logActivity>
+        }
+
+        public async removeMember(params: { id: number }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/collaboration/members/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async resolveComment(params: { id: number }): Promise<ResponseType<typeof api_collaboration_comments_resolveComment>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/comments/${encodeURIComponent(params.id)}/resolve`, {method: "PATCH", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_comments_resolveComment>
+        }
+
+        public async updatePresence(params: RequestType<typeof api_collaboration_presence_updatePresence>): Promise<ResponseType<typeof api_collaboration_presence_updatePresence>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/collaboration/presence`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_collaboration_presence_updatePresence>
         }
     }
 }
@@ -428,6 +860,63 @@ export namespace deployments {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { list as api_errors_list_list } from "~backend/errors/list";
+import { logError as api_errors_log_logError } from "~backend/errors/log";
+import { resolve as api_errors_resolve_resolve } from "~backend/errors/resolve";
+import { getStats as api_errors_stats_getStats } from "~backend/errors/stats";
+
+export namespace errors {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.getStats = this.getStats.bind(this)
+            this.list = this.list.bind(this)
+            this.logError = this.logError.bind(this)
+            this.resolve = this.resolve.bind(this)
+        }
+
+        public async getStats(): Promise<ResponseType<typeof api_errors_stats_getStats>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/errors/stats`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_errors_stats_getStats>
+        }
+
+        public async list(params: RequestType<typeof api_errors_list_list>): Promise<ResponseType<typeof api_errors_list_list>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "error_type":  params["error_type"],
+                "is_resolved": params["is_resolved"] === undefined ? undefined : String(params["is_resolved"]),
+                limit:         params.limit === undefined ? undefined : String(params.limit),
+                offset:        params.offset === undefined ? undefined : String(params.offset),
+                severity:      params.severity,
+                "user_id":     params["user_id"],
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/errors`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_errors_list_list>
+        }
+
+        public async logError(params: RequestType<typeof api_errors_log_logError>): Promise<ResponseType<typeof api_errors_log_logError>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/errors`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_errors_log_logError>
+        }
+
+        public async resolve(params: { error_id: number }): Promise<ResponseType<typeof api_errors_resolve_resolve>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/errors/${encodeURIComponent(params.error_id)}/resolve`, {method: "PATCH", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_errors_resolve_resolve>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
 import { list as api_files_list_list } from "~backend/files/list";
 import { record as api_files_record_record } from "~backend/files/record";
 
@@ -684,6 +1173,81 @@ export namespace tests {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/tests/${encodeURIComponent(params.id)}/run`, {method: "POST", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_run_run>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { create as api_widgets_create_create } from "~backend/widgets/create";
+import { getData as api_widgets_data_getData } from "~backend/widgets/data";
+import { deleteWidget as api_widgets_delete_deleteWidget } from "~backend/widgets/delete";
+import { list as api_widgets_list_list } from "~backend/widgets/list";
+import { listTemplates as api_widgets_templates_listTemplates } from "~backend/widgets/templates";
+import { update as api_widgets_update_update } from "~backend/widgets/update";
+
+export namespace widgets {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.create = this.create.bind(this)
+            this.deleteWidget = this.deleteWidget.bind(this)
+            this.getData = this.getData.bind(this)
+            this.list = this.list.bind(this)
+            this.listTemplates = this.listTemplates.bind(this)
+            this.update = this.update.bind(this)
+        }
+
+        public async create(params: RequestType<typeof api_widgets_create_create>): Promise<ResponseType<typeof api_widgets_create_create>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/widgets`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_widgets_create_create>
+        }
+
+        public async deleteWidget(params: { widget_id: number }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/widgets/${encodeURIComponent(params.widget_id)}`, {method: "DELETE", body: undefined})
+        }
+
+        public async getData(params: { widget_id: number }): Promise<ResponseType<typeof api_widgets_data_getData>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/widgets/${encodeURIComponent(params.widget_id)}/data`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_widgets_data_getData>
+        }
+
+        public async list(params: RequestType<typeof api_widgets_list_list>): Promise<ResponseType<typeof api_widgets_list_list>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "project_id": params["project_id"] === undefined ? undefined : String(params["project_id"]),
+                "user_id":    params["user_id"],
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/widgets`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_widgets_list_list>
+        }
+
+        public async listTemplates(): Promise<ResponseType<typeof api_widgets_templates_listTemplates>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/widgets/templates`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_widgets_templates_listTemplates>
+        }
+
+        public async update(params: RequestType<typeof api_widgets_update_update>): Promise<ResponseType<typeof api_widgets_update_update>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                config:       params.config,
+                "is_visible": params["is_visible"],
+                position:     params.position,
+                title:        params.title,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/widgets/${encodeURIComponent(params.widget_id)}`, {method: "PATCH", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_widgets_update_update>
         }
     }
 }

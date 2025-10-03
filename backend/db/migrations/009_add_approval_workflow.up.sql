@@ -1,7 +1,7 @@
 -- Deployment approvals table
 CREATE TABLE deployment_approvals (
   id BIGSERIAL PRIMARY KEY,
-  deployment_id BIGINT NOT NULL REFERENCES deployments(id) ON DELETE CASCADE,
+  deployment_id BIGINT NOT NULL REFERENCES deployment_logs(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending',
   required_approvals INTEGER NOT NULL DEFAULT 1,
   approval_count INTEGER NOT NULL DEFAULT 0,
