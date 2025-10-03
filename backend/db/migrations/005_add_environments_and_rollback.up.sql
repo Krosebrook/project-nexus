@@ -41,7 +41,7 @@ BEGIN
   ) THEN
     ALTER TABLE deployment_logs 
       ADD CONSTRAINT deployment_logs_rollback_from_deployment_id_fkey 
-      FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment_logs(id);
+      FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment_logs(id) ON DELETE SET NULL;
   END IF;
   
   IF NOT EXISTS (
