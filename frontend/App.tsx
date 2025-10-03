@@ -4,6 +4,7 @@ import { Dashboard } from "@/components/Dashboard";
 import { EnhancedProjectsTab } from "@/components/EnhancedProjectsTab";
 import { AutomationTab } from "@/components/AutomationTab";
 import { DeploymentTab } from "@/components/DeploymentTab";
+import { SettingsTab } from "@/components/SettingsTab";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ContextSnapshotPanel, ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
@@ -74,12 +75,8 @@ export default function App() {
   };
 
   const handleTabChange = (tab: TabValue) => {
-    if (tab === "settings") {
-      setSettingsOpen(true);
-    } else {
-      setActiveTab(tab);
-      setSidebarOpen(false);
-    }
+    setActiveTab(tab);
+    setSidebarOpen(false);
   };
 
   const handleCommandAction = (action: string, project?: Project) => {
@@ -247,6 +244,12 @@ export default function App() {
                     Select a project to view deployment options
                   </div>
                 )}
+              </ErrorBoundary>
+            )}
+
+            {activeTab === "settings" && (
+              <ErrorBoundary>
+                <SettingsTab />
               </ErrorBoundary>
             )}
           </main>
