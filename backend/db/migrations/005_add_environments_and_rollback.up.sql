@@ -15,27 +15,47 @@ CREATE INDEX IF NOT EXISTS idx_environments_project_id ON environments(project_i
 CREATE INDEX IF NOT EXISTS idx_environments_type ON environments(type);
 CREATE INDEX IF NOT EXISTS idx_environments_is_active ON environments(is_active);
 
-CREATE TABLE IF NOT EXISTS deployment_logs (
-  id BIGSERIAL PRIMARY KEY,
-  project_id BIGINT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  environment_id BIGINT NOT NULL REFERENCES environments(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'in_progress', 'success', 'failed', 'rolled_back')),
-  stage TEXT,
-  progress INTEGER NOT NULL DEFAULT 0,
-  logs TEXT,
-  error_message TEXT,
-  rollback_from_deployment_id BIGINT REFERENCES deployment_logs(id),
-  metadata JSONB DEFAULT '{}',
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+ALTER TABLE deployment_logs 
+  ADD COLUMN IF NOT EXISTS environment_id BIGINT,
+  ADD COLUMN IF NOT EXISTS error_message TEXT,
+  ADD COLUMN IF NOT EXISTS rollback_from_deployment_id BIGINT,
+  ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}',
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
-CREATE INDEX IF NOT EXISTS idx_deployment_logs_project_id ON deployment_logs(project_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'deployment_logs_environment_id_fkey'
+  ) THEN
+    ALTER TABLE deployment_logs 
+      ADD CONSTRAINT deployment_logs_environment_id_fkey 
+      FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE CASCADE;
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'deployment_logs_rollback_from_deployment_id_fkey'
+  ) THEN
+    ALTER TABLE deployment_logs 
+      ADD CONSTRAINT deployment_logs_rollback_from_deployment_id_fkey 
+      FOREIGN KEY (rollback_from_deployment_id) REFERENCES deployment_logs(id);
+  END IF;
+  
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'deployment_logs_status_check'
+  ) THEN
+    ALTER TABLE deployment_logs 
+      ADD CONSTRAINT deployment_logs_status_check 
+      CHECK (status IN ('pending', 'in_progress', 'success', 'failed', 'rolled_back'));
+  END IF;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_deployment_logs_environment_id ON deployment_logs(environment_id);
 CREATE INDEX IF NOT EXISTS idx_deployment_logs_status ON deployment_logs(status);
-CREATE INDEX IF NOT EXISTS idx_deployment_logs_created_at ON deployment_logs(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS deployment_comparisons (
   id BIGSERIAL PRIMARY KEY,
