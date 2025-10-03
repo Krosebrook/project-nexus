@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
-import { ProjectsTab } from "@/components/ProjectsTab";
+import { EnhancedProjectsTab } from "@/components/EnhancedProjectsTab";
 import { AutomationTab } from "@/components/AutomationTab";
 import { DeploymentTab } from "@/components/DeploymentTab";
 import { SettingsDialog } from "@/components/SettingsDialog";
@@ -146,10 +146,8 @@ export default function App() {
 
             {activeTab === "projects" && (
               <ErrorBoundary>
-                <ProjectsTab
+                <EnhancedProjectsTab
                   projects={projects}
-                  selectedProject={selectedProject}
-                  onProjectSelect={setSelectedProject}
                   onProjectUpdate={loadProjects}
                 />
               </ErrorBoundary>
