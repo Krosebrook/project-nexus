@@ -6,9 +6,17 @@ import { AutomationTab } from "@/components/AutomationTab";
 import { DeploymentTab } from "@/components/DeploymentTab";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ContextSnapshotPanel, ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
+import { DeployModal } from "@/components/DeployModal";
+import { LogsModal } from "@/components/LogsModal";
+import { DocsPanel } from "@/components/DocsPanel";
+import { AlertBanner } from "@/components/AlertBanner";
+import { CommandPalette } from "@/components/CommandPalette";
+import { ProjectDetailModal } from "@/components/ProjectDetailModal";
 import { Button } from "@/components/ui/button";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
+import type { ContextSnapshot } from "~backend/snapshots/types";
 
 type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "settings";
 
@@ -19,10 +27,32 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [snapshotPanelOpen, setSnapshotPanelOpen] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [docsPanelOpen, setDocsPanelOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [projectDetailModalOpen, setProjectDetailModalOpen] = useState(false);
+  const [criticalProject, setCriticalProject] = useState<Project | null>(null);
 
   useEffect(() => {
     loadProjects();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  useEffect(() => {
+    const critical = projects.find(p => p.status === 'critical');
+    setCriticalProject(critical || null);
+  }, [projects]);
 
   const loadProjects = async () => {
     try {
@@ -52,6 +82,47 @@ export default function App() {
     }
   };
 
+  const handleCommandAction = (action: string, project?: Project) => {
+    const targetProject = project || selectedProject;
+    
+    switch (action) {
+      case 'deploy':
+        if (targetProject) {
+          setSelectedProject(targetProject);
+          setDeployModalOpen(true);
+        }
+        break;
+      case 'save-context':
+        setSnapshotPanelOpen(true);
+        break;
+      case 'view-logs':
+        if (targetProject) {
+          setSelectedProject(targetProject);
+          setLogsModalOpen(true);
+        }
+        break;
+      case 'docs':
+        setDocsPanelOpen(true);
+        break;
+    }
+  };
+
+  const handleRestoreSnapshot = (snapshot: ContextSnapshot) => {
+    const project = projects.find(p => p.id === snapshot.project_id);
+    if (project) {
+      setSelectedProject(project);
+      setActiveTab('projects');
+    }
+    if (snapshot.urls.length > 0) {
+      snapshot.urls.forEach(url => window.open(url, '_blank'));
+    }
+  };
+
+  const handleAlertViewDetails = (project: Project) => {
+    setSelectedProject(project);
+    setProjectDetailModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="dark min-h-screen bg-[#0a0a0a] flex items-center justify-center">
@@ -75,6 +146,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="dark min-h-screen bg-[#0a0a0a] text-foreground">
+        <AlertBanner project={criticalProject} onViewDetails={handleAlertViewDetails} />
+        
         <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
           <div className="flex items-center justify-between px-4 h-16">
             <div className="flex items-center gap-4">
@@ -180,6 +253,53 @@ export default function App() {
         </div>
 
         <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+        
+        <ContextSnapshotPanel
+          isOpen={snapshotPanelOpen}
+          onClose={() => setSnapshotPanelOpen(false)}
+          currentProject={selectedProject}
+          onRestore={handleRestoreSnapshot}
+        />
+        
+        <ContextSnapshotFAB onClick={() => setSnapshotPanelOpen(true)} />
+        
+        <DeployModal
+          isOpen={deployModalOpen}
+          onClose={() => setDeployModalOpen(false)}
+          project={selectedProject}
+        />
+        
+        <LogsModal
+          isOpen={logsModalOpen}
+          onClose={() => setLogsModalOpen(false)}
+          project={selectedProject}
+        />
+        
+        <DocsPanel
+          isOpen={docsPanelOpen}
+          onClose={() => setDocsPanelOpen(false)}
+        />
+        
+        <CommandPalette
+          isOpen={commandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          projects={projects}
+          onSelectProject={(project) => {
+            setSelectedProject(project);
+            setActiveTab('projects');
+          }}
+          onAction={handleCommandAction}
+        />
+        
+        {projectDetailModalOpen && selectedProject && (
+          <ProjectDetailModal
+            onClose={() => setProjectDetailModalOpen(false)}
+            project={selectedProject}
+            latencyData={[]}
+            errorRateData={[]}
+            uptimeData={[]}
+          />
+        )}
       </div>
     </ErrorBoundary>
   );

@@ -1,4 +1,4 @@
-export type ProjectStatus = "active" | "development" | "maintenance" | "archived";
+export type ProjectStatus = "active" | "development" | "maintenance" | "archived" | "critical";
 
 export interface Project {
   id: number;
@@ -10,4 +10,5 @@ export interface Project {
   metrics: Record<string, any>;
   created_at: Date;
   updated_at: Date;
+  version?: string;
 }
