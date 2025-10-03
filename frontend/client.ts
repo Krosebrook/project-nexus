@@ -41,6 +41,7 @@ export class Client {
     public readonly deployments: deployments.ServiceClient
     public readonly errors: errors.ServiceClient
     public readonly files: files.ServiceClient
+    public readonly notifications: notifications.ServiceClient
     public readonly projects: projects.ServiceClient
     public readonly settings: settings.ServiceClient
     public readonly snapshots: snapshots.ServiceClient
@@ -68,6 +69,7 @@ export class Client {
         this.deployments = new deployments.ServiceClient(base)
         this.errors = new errors.ServiceClient(base)
         this.files = new files.ServiceClient(base)
+        this.notifications = new notifications.ServiceClient(base)
         this.projects = new projects.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
         this.snapshots = new snapshots.ServiceClient(base)
@@ -643,9 +645,13 @@ export namespace contexts {
  * Import the endpoint handlers to derive the types for the client.
  */
 import {
-    compare as api_deployments_compare_compare,
-    listComparisons as api_deployments_compare_listComparisons
-} from "~backend/deployments/compare";
+    compareDeployments as api_deployments_artifacts_compareDeployments,
+    createArtifact as api_deployments_artifacts_createArtifact,
+    createVersion as api_deployments_artifacts_createVersion,
+    getLatestVersion as api_deployments_artifacts_getLatestVersion,
+    listArtifacts as api_deployments_artifacts_listArtifacts,
+    listVersions as api_deployments_artifacts_listVersions
+} from "~backend/deployments/artifacts";
 import {
     getCoverage as api_deployments_coverage_getCoverage,
     getCoverageTrend as api_deployments_coverage_getCoverageTrend,
@@ -670,8 +676,24 @@ import {
     updateIncident as api_deployments_incidents_updateIncident
 } from "~backend/deployments/incidents";
 import { logs as api_deployments_logs_logs } from "~backend/deployments/logs";
+import {
+    cancelQueueItem as api_deployments_queue_cancelQueueItem,
+    createSchedule as api_deployments_queue_createSchedule,
+    enqueueDeployment as api_deployments_queue_enqueueDeployment,
+    listQueue as api_deployments_queue_listQueue,
+    listSchedules as api_deployments_queue_listSchedules,
+    updateQueueItem as api_deployments_queue_updateQueueItem
+} from "~backend/deployments/queue";
+import { assessDeploymentRisk as api_deployments_risk_assessment_assessDeploymentRisk } from "~backend/deployments/risk-assessment";
 import { rollback as api_deployments_rollback_rollback } from "~backend/deployments/rollback";
 import { status as api_deployments_status_status } from "~backend/deployments/status";
+import {
+    assignTemplate as api_deployments_templates_assignTemplate,
+    createTemplate as api_deployments_templates_createTemplate,
+    getTemplate as api_deployments_templates_getTemplate,
+    listProjectTemplates as api_deployments_templates_listProjectTemplates,
+    listTemplates as api_deployments_templates_listTemplates
+} from "~backend/deployments/templates";
 
 export namespace deployments {
 
@@ -681,18 +703,33 @@ export namespace deployments {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.addDependency = this.addDependency.bind(this)
-            this.compare = this.compare.bind(this)
+            this.assessDeploymentRisk = this.assessDeploymentRisk.bind(this)
+            this.assignTemplate = this.assignTemplate.bind(this)
+            this.cancelQueueItem = this.cancelQueueItem.bind(this)
+            this.compareDeployments = this.compareDeployments.bind(this)
+            this.createArtifact = this.createArtifact.bind(this)
             this.createEnvironment = this.createEnvironment.bind(this)
             this.createIncident = this.createIncident.bind(this)
+            this.createSchedule = this.createSchedule.bind(this)
+            this.createTemplate = this.createTemplate.bind(this)
+            this.createVersion = this.createVersion.bind(this)
             this.deploy = this.deploy.bind(this)
+            this.enqueueDeployment = this.enqueueDeployment.bind(this)
             this.getCoverage = this.getCoverage.bind(this)
             this.getCoverageTrend = this.getCoverageTrend.bind(this)
             this.getDependencyGraph = this.getDependencyGraph.bind(this)
             this.getIncidentStats = this.getIncidentStats.bind(this)
-            this.listComparisons = this.listComparisons.bind(this)
+            this.getLatestVersion = this.getLatestVersion.bind(this)
+            this.getTemplate = this.getTemplate.bind(this)
+            this.listArtifacts = this.listArtifacts.bind(this)
             this.listDependencies = this.listDependencies.bind(this)
             this.listEnvironments = this.listEnvironments.bind(this)
             this.listIncidents = this.listIncidents.bind(this)
+            this.listProjectTemplates = this.listProjectTemplates.bind(this)
+            this.listQueue = this.listQueue.bind(this)
+            this.listSchedules = this.listSchedules.bind(this)
+            this.listTemplates = this.listTemplates.bind(this)
+            this.listVersions = this.listVersions.bind(this)
             this.logs = this.logs.bind(this)
             this.recordCoverage = this.recordCoverage.bind(this)
             this.removeDependency = this.removeDependency.bind(this)
@@ -700,6 +737,7 @@ export namespace deployments {
             this.status = this.status.bind(this)
             this.updateEnvironment = this.updateEnvironment.bind(this)
             this.updateIncident = this.updateIncident.bind(this)
+            this.updateQueueItem = this.updateQueueItem.bind(this)
         }
 
         public async addDependency(params: RequestType<typeof api_deployments_dependencies_addDependency>): Promise<ResponseType<typeof api_deployments_dependencies_addDependency>> {
@@ -708,10 +746,34 @@ export namespace deployments {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_dependencies_addDependency>
         }
 
-        public async compare(params: RequestType<typeof api_deployments_compare_compare>): Promise<ResponseType<typeof api_deployments_compare_compare>> {
+        public async assessDeploymentRisk(params: RequestType<typeof api_deployments_risk_assessment_assessDeploymentRisk>): Promise<ResponseType<typeof api_deployments_risk_assessment_assessDeploymentRisk>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/risk-assessment`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_risk_assessment_assessDeploymentRisk>
+        }
+
+        public async assignTemplate(params: RequestType<typeof api_deployments_templates_assignTemplate>): Promise<ResponseType<typeof api_deployments_templates_assignTemplate>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/templates/assign`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_assignTemplate>
+        }
+
+        public async cancelQueueItem(params: { id: number }): Promise<ResponseType<typeof api_deployments_queue_cancelQueueItem>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/queue/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_cancelQueueItem>
+        }
+
+        public async compareDeployments(params: RequestType<typeof api_deployments_artifacts_compareDeployments>): Promise<ResponseType<typeof api_deployments_artifacts_compareDeployments>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/deployments/compare`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_compare_compare>
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_compareDeployments>
+        }
+
+        public async createArtifact(params: RequestType<typeof api_deployments_artifacts_createArtifact>): Promise<ResponseType<typeof api_deployments_artifacts_createArtifact>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/artifacts`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_createArtifact>
         }
 
         public async createEnvironment(params: RequestType<typeof api_deployments_environments_createEnvironment>): Promise<ResponseType<typeof api_deployments_environments_createEnvironment>> {
@@ -726,10 +788,34 @@ export namespace deployments {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_incidents_createIncident>
         }
 
+        public async createSchedule(params: RequestType<typeof api_deployments_queue_createSchedule>): Promise<ResponseType<typeof api_deployments_queue_createSchedule>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/schedules`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_createSchedule>
+        }
+
+        public async createTemplate(params: RequestType<typeof api_deployments_templates_createTemplate>): Promise<ResponseType<typeof api_deployments_templates_createTemplate>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/templates`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_createTemplate>
+        }
+
+        public async createVersion(params: RequestType<typeof api_deployments_artifacts_createVersion>): Promise<ResponseType<typeof api_deployments_artifacts_createVersion>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/versions`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_createVersion>
+        }
+
         public async deploy(params: RequestType<typeof api_deployments_deploy_deploy>): Promise<ResponseType<typeof api_deployments_deploy_deploy>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/deployments/deploy`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_deploy_deploy>
+        }
+
+        public async enqueueDeployment(params: RequestType<typeof api_deployments_queue_enqueueDeployment>): Promise<ResponseType<typeof api_deployments_queue_enqueueDeployment>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/queue`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_enqueueDeployment>
         }
 
         public async getCoverage(params: RequestType<typeof api_deployments_coverage_getCoverage>): Promise<ResponseType<typeof api_deployments_coverage_getCoverage>> {
@@ -761,10 +847,22 @@ export namespace deployments {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_incidents_getIncidentStats>
         }
 
-        public async listComparisons(params: { projectId: number }): Promise<ResponseType<typeof api_deployments_compare_listComparisons>> {
+        public async getLatestVersion(params: { project_id: number, artifact_name: string }): Promise<ResponseType<typeof api_deployments_artifacts_getLatestVersion>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/deployments/${encodeURIComponent(params.projectId)}/comparisons`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_compare_listComparisons>
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.project_id)}/versions/${encodeURIComponent(params.artifact_name)}/latest`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_getLatestVersion>
+        }
+
+        public async getTemplate(params: { id: number }): Promise<ResponseType<typeof api_deployments_templates_getTemplate>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/templates/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_getTemplate>
+        }
+
+        public async listArtifacts(params: { deployment_id: number }): Promise<ResponseType<typeof api_deployments_artifacts_listArtifacts>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/${encodeURIComponent(params.deployment_id)}/artifacts`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_listArtifacts>
         }
 
         public async listDependencies(params: { projectId: number }): Promise<ResponseType<typeof api_deployments_dependencies_listDependencies>> {
@@ -788,6 +886,55 @@ export namespace deployments {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/incidents/${encodeURIComponent(params.projectId)}`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_incidents_listIncidents>
+        }
+
+        public async listProjectTemplates(params: { project_id: number }): Promise<ResponseType<typeof api_deployments_templates_listProjectTemplates>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.project_id)}/templates`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_listProjectTemplates>
+        }
+
+        public async listQueue(params: RequestType<typeof api_deployments_queue_listQueue>): Promise<ResponseType<typeof api_deployments_queue_listQueue>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "environment_id": params["environment_id"] === undefined ? undefined : String(params["environment_id"]),
+                "project_id":     params["project_id"] === undefined ? undefined : String(params["project_id"]),
+                status:           params.status,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/queue`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_listQueue>
+        }
+
+        public async listSchedules(params: RequestType<typeof api_deployments_queue_listSchedules>): Promise<ResponseType<typeof api_deployments_queue_listSchedules>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "is_active":  params["is_active"] === undefined ? undefined : String(params["is_active"]),
+                "project_id": params["project_id"] === undefined ? undefined : String(params["project_id"]),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/schedules`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_listSchedules>
+        }
+
+        public async listTemplates(): Promise<ResponseType<typeof api_deployments_templates_listTemplates>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/templates`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_listTemplates>
+        }
+
+        public async listVersions(params: RequestType<typeof api_deployments_artifacts_listVersions>): Promise<ResponseType<typeof api_deployments_artifacts_listVersions>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "artifact_name": params["artifact_name"],
+                limit:           params.limit === undefined ? undefined : String(params.limit),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.project_id)}/versions`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_listVersions>
         }
 
         public async logs(params: RequestType<typeof api_deployments_logs_logs>): Promise<ResponseType<typeof api_deployments_logs_logs>> {
@@ -853,6 +1000,19 @@ export namespace deployments {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/incidents/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_incidents_updateIncident>
+        }
+
+        public async updateQueueItem(params: RequestType<typeof api_deployments_queue_updateQueueItem>): Promise<ResponseType<typeof api_deployments_queue_updateQueueItem>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "deployment_id": params["deployment_id"],
+                priority:        params.priority,
+                status:          params.status,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/queue/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_queue_updateQueueItem>
         }
     }
 }
@@ -947,6 +1107,33 @@ export namespace files {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/files/moves`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_files_record_record>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { streamDeploymentUpdates as api_notifications_stream_streamDeploymentUpdates } from "~backend/notifications/stream";
+
+export namespace notifications {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.streamDeploymentUpdates = this.streamDeploymentUpdates.bind(this)
+        }
+
+        public async streamDeploymentUpdates(params: RequestType<typeof api_notifications_stream_streamDeploymentUpdates>): Promise<StreamIn<StreamResponse<typeof api_notifications_stream_streamDeploymentUpdates>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                deploymentId: params.deploymentId === undefined ? undefined : String(params.deploymentId),
+                projectId:    params.projectId === undefined ? undefined : String(params.projectId),
+            })
+
+            return await this.baseClient.createStreamIn(`/notifications/deployments/stream`, {query})
         }
     }
 }
