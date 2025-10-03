@@ -24,11 +24,12 @@ describe("Database Connection Pool", () => {
   });
 
   it("should execute transactions correctly", async () => {
-    const result = await db.exec`
+    const result = await db.queryRow<{ value: number }>`
       SELECT 1 as value
     `;
     
     expect(result).toBeDefined();
+    expect(result?.value).toBe(1);
   });
 
   it("should handle parameterized queries", async () => {

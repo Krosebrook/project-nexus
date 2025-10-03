@@ -110,7 +110,7 @@ export const listQueue = api(
 
     query += ` ORDER BY priority DESC, queue_position ASC`;
 
-    const queue = await db.query<QueuedDeployment>(query as any, ...params);
+    const queue = await db.queryAll<QueuedDeployment>(query as any, ...params);
 
     return { queue };
   }
@@ -287,7 +287,7 @@ export const listSchedules = api(
 
     query += ` ORDER BY next_execution ASC NULLS LAST, created_at DESC`;
 
-    const schedules = await db.query<DeploymentSchedule>(query as any, ...params);
+    const schedules = await db.queryAll<DeploymentSchedule>(query as any, ...params);
 
     return { schedules };
   }

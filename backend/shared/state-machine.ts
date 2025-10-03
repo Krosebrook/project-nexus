@@ -79,7 +79,7 @@ export class StateMachine<TStage extends string, TContext> {
   getProgress(currentStage: TStage): number {
     const index = this.getCurrentStageIndex(currentStage);
     if (index === -1) return 0;
-    return ((index + 1) / this.stages.length) * 100;
+    return Math.round(((index + 1) / this.stages.length) * 100);
   }
 }
 

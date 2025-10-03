@@ -8,7 +8,7 @@ describe("Advanced Alerting Integration Tests", () => {
   beforeAll(async () => {
     const project = await db.queryRow<{ id: number }>`
       INSERT INTO projects (name)
-      VALUES ('Test Alert Project')
+      VALUES (${`Test Alert Project ${Date.now()}`})
       RETURNING id
     `;
     testProjectId = project!.id;

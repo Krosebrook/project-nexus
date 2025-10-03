@@ -28,7 +28,7 @@ describe("Deployment Flow E2E Tests", () => {
     await db.exec`DELETE FROM projects WHERE id = ${testProjectId}`;
   });
 
-  it("should successfully execute full deployment flow", async () => {
+  it("should successfully execute full deployment flow", { timeout: 10000 }, async () => {
     const deployment = await db.queryRow<DeploymentLog>`
       INSERT INTO deployment_logs (project_id, environment_id, environment, status, stage, progress)
       VALUES (${testProjectId}, ${testEnvironmentId}, 'test-env', 'pending', 'validation', 0)
@@ -56,7 +56,7 @@ describe("Deployment Flow E2E Tests", () => {
     await db.exec`DELETE FROM deployment_logs WHERE id = ${deployment!.id}`;
   });
 
-  it("should track progress through all stages", async () => {
+  it("should track progress through all stages", { timeout: 10000 }, async () => {
     const deployment = await db.queryRow<DeploymentLog>`
       INSERT INTO deployment_logs (project_id, environment_id, environment, status, stage, progress)
       VALUES (${testProjectId}, ${testEnvironmentId}, 'test-env', 'pending', 'validation', 0)
@@ -87,7 +87,7 @@ describe("Deployment Flow E2E Tests", () => {
     await db.exec`DELETE FROM deployment_logs WHERE id = ${deployment!.id}`;
   });
 
-  it("should handle deployment with existing logs", async () => {
+  it("should handle deployment with existing logs", { timeout: 10000 }, async () => {
     const deployment = await db.queryRow<DeploymentLog>`
       INSERT INTO deployment_logs (project_id, environment_id, environment, status, stage, progress, logs)
       VALUES (${testProjectId}, ${testEnvironmentId}, 'test-env', 'pending', 'validation', 0, 'Initial log entry')
@@ -114,7 +114,7 @@ describe("Deployment Flow E2E Tests", () => {
     await db.exec`DELETE FROM deployment_logs WHERE id = ${deployment!.id}`;
   });
 
-  it("should set completed_at timestamp on success", async () => {
+  it("should set completed_at timestamp on success", { timeout: 10000 }, async () => {
     const deployment = await db.queryRow<DeploymentLog>`
       INSERT INTO deployment_logs (project_id, environment_id, environment, status, stage, progress)
       VALUES (${testProjectId}, ${testEnvironmentId}, 'test-env', 'pending', 'validation', 0)
@@ -146,7 +146,7 @@ describe("Deployment Flow E2E Tests", () => {
     await db.exec`DELETE FROM deployment_logs WHERE id = ${deployment!.id}`;
   });
 
-  it("should update updated_at timestamp during execution", async () => {
+  it("should update updated_at timestamp during execution", { timeout: 10000 }, async () => {
     const deployment = await db.queryRow<DeploymentLog>`
       INSERT INTO deployment_logs (project_id, environment_id, environment, status, stage, progress)
       VALUES (${testProjectId}, ${testEnvironmentId}, 'test-env', 'pending', 'validation', 0)

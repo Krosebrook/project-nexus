@@ -26,7 +26,7 @@ export interface ListTemplatesResponse {
 export const listTemplates = api(
   { method: "GET", path: "/deployments/templates", expose: true },
   async (): Promise<ListTemplatesResponse> => {
-    const templates = await db.query<DeploymentTemplate>`
+    const templates = await db.queryAll<DeploymentTemplate>`
       SELECT * FROM deployment_templates
       WHERE is_public = true
       ORDER BY name ASC
@@ -196,7 +196,7 @@ export interface ListProjectTemplatesResponse {
 export const listProjectTemplates = api(
   { method: "GET", path: "/projects/:project_id/templates", expose: true },
   async ({ project_id }: ListProjectTemplatesRequest): Promise<ListProjectTemplatesResponse> => {
-    const assignments = await db.query<{
+    const assignments = await db.queryAll<{
       id: number;
       project_id: number;
       template_id: number;

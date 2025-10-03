@@ -9,7 +9,6 @@ interface DeploymentStreamRequest {
 
 export const streamDeploymentUpdates = api.streamOut<DeploymentStreamRequest, DeploymentStatusUpdate>(
   { 
-    method: "GET", 
     path: "/notifications/deployments/stream", 
     expose: true
   },
@@ -80,16 +79,7 @@ export const streamDeploymentUpdates = api.streamOut<DeploymentStreamRequest, De
         }
       }, 2000);
 
-      await new Promise<void>((resolve, reject) => {
-        stream.onclose = () => {
-          clearInterval(pollingInterval);
-          resolve();
-        };
-        stream.onerror = (err) => {
-          clearInterval(pollingInterval);
-          reject(err);
-        };
-      });
+      await new Promise<void>(() => {});
     } catch (error) {
       console.error("Stream error:", error);
     }

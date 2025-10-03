@@ -37,7 +37,7 @@ export const assessDeploymentRisk = api(
   async (req: AssessDeploymentRiskRequest): Promise<DeploymentRiskAssessment> => {
     const riskFactors: RiskFactor[] = [];
 
-    const recentFailures = await db.query<{ id: number; error_message: string | null }>`
+    const recentFailures = await db.queryAll<{ id: number; error_message: string | null }>`
       SELECT id, error_message
       FROM deployment_logs
       WHERE project_id = ${req.project_id}
@@ -59,7 +59,7 @@ export const assessDeploymentRisk = api(
       });
     }
 
-    const activeIncidents = await db.query<{ id: number; severity: string }>`
+    const activeIncidents = await db.queryAll<{ id: number; severity: string }>`
       SELECT id, severity
       FROM incidents
       WHERE project_id = ${req.project_id}
@@ -80,7 +80,7 @@ export const assessDeploymentRisk = api(
       });
     }
 
-    const recentDeployments = await db.query<{ id: number }>`
+    const recentDeployments = await db.queryAll<{ id: number }>`
       SELECT id
       FROM deployment_logs
       WHERE project_id = ${req.project_id}
@@ -136,7 +136,7 @@ export const assessDeploymentRisk = api(
       });
     }
 
-    const failedTests = await db.query<{ id: number }>`
+    const failedTests = await db.queryAll<{ id: number }>`
       SELECT id
       FROM test_cases
       WHERE project_id = ${req.project_id}

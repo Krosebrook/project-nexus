@@ -70,7 +70,7 @@ export interface ListArtifactsResponse {
 export const listArtifacts = api(
   { method: "GET", path: "/deployments/:deployment_id/artifacts", expose: true },
   async ({ deployment_id }: ListArtifactsRequest): Promise<ListArtifactsResponse> => {
-    const artifacts = await db.query<DeploymentArtifact>`
+    const artifacts = await db.queryAll<DeploymentArtifact>`
       SELECT * FROM deployment_artifacts
       WHERE deployment_id = ${deployment_id}
       ORDER BY created_at DESC
@@ -113,12 +113,12 @@ export const compareDeployments = api(
       return existingDiff;
     }
 
-    const artifactsA = await db.query<DeploymentArtifact>`
+    const artifactsA = await db.queryAll<DeploymentArtifact>`
       SELECT * FROM deployment_artifacts
       WHERE deployment_id = ${req.deployment_a_id}
     `;
 
-    const artifactsB = await db.query<DeploymentArtifact>`
+    const artifactsB = await db.queryAll<DeploymentArtifact>`
       SELECT * FROM deployment_artifacts
       WHERE deployment_id = ${req.deployment_b_id}
     `;
@@ -296,7 +296,7 @@ export const listVersions = api(
       params.push(req.limit);
     }
 
-    const versions = await db.query<ArtifactVersion>(query as any, ...params);
+    const versions = await db.queryAll<ArtifactVersion>(query as any, ...params);
 
     return { versions };
   }

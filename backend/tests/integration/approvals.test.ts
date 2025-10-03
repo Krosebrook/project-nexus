@@ -9,14 +9,14 @@ describe("Approval Workflow Integration Tests", () => {
   beforeAll(async () => {
     const project = await db.queryRow<{ id: number }>`
       INSERT INTO projects (name)
-      VALUES ('Test Approval Project')
+      VALUES (${`Test Approval Project ${Date.now()}`})
       RETURNING id
     `;
     testProjectId = project!.id;
 
     const deployment = await db.queryRow<{ id: number }>`
-      INSERT INTO deployments (project_id, environment, version, status)
-      VALUES (${testProjectId}, 'production', '1.0.0', 'pending')
+      INSERT INTO deployment_logs (project_id, environment, status)
+      VALUES (${testProjectId}, 'production', 'pending')
       RETURNING id
     `;
     testDeploymentId = deployment!.id;

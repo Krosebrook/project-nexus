@@ -8,7 +8,7 @@ describe("Collaboration Integration Tests", () => {
   beforeAll(async () => {
     const project = await db.queryRow<{ id: number }>`
       INSERT INTO projects (name, description)
-      VALUES ('Test Collaboration Project', 'For testing')
+      VALUES (${`Test Collaboration Project ${Date.now()}`}, 'For testing')
       RETURNING id
     `;
     testProjectId = project!.id;

@@ -5,9 +5,10 @@ describe("Database transaction rollback", () => {
   let testProjectId: number;
 
   beforeEach(async () => {
+    const uniqueName = `Test Transaction Project ${Date.now()}-${Math.random()}`;
     const result = await db.query<{ id: number }>`
       INSERT INTO projects (name, description) 
-      VALUES ('Test Transaction Project', 'Test project for transaction tests')
+      VALUES (${uniqueName}, 'Test project for transaction tests')
       RETURNING id
     `;
     for await (const row of result) {
