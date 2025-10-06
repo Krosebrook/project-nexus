@@ -1,12 +1,16 @@
 import { api } from "encore.dev/api";
 import db from "../db";
 import type { RollbackRequest, DeploymentLog } from "./types";
+import {
+  canSafelyRollbackDeployment,
+  logMigrationRollback,
+  updateMigrationRollbackStatus,
+} from "./migration-safety";
 
 export const rollback = api(
   { method: "POST", path: "/deployments/:id/rollback", expose: true },
   async ({ id, reason }: RollbackRequest & { id: number }): Promise<DeploymentLog> => {
 
-    
     const originalDeployment = await db.queryRow<DeploymentLog>`
       SELECT * FROM deployment_logs WHERE id = ${id}
     `;
@@ -17,6 +21,18 @@ export const rollback = api(
     
     if (originalDeployment.status === "rolled_back") {
       throw new Error("Deployment already rolled back");
+    }
+
+    const safetyCheck = await canSafelyRollbackDeployment(id);
+    if (!safetyCheck.safe) {
+      throw new Error(
+        `Rollback safety check failed: ${safetyCheck.reasons.join("; ")}`
+      );
+    }
+
+    const migrations = originalDeployment.metadata?.migrations || [];
+    for (const migration of migrations) {
+      await logMigrationRollback(migration, "system");
     }
     
     await db.exec`

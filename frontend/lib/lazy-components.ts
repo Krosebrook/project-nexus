@@ -55,3 +55,27 @@ export const LazyFirstVisitTour = lazy(() =>
 export const LazyCommandPalette = lazy(() =>
   import("@/components/CommandPalette").then(m => ({ default: m.CommandPalette }))
 );
+
+export const LazyContextSnapshotPanel = lazy(() =>
+  import("@/components/ContextSnapshotPanel").then(m => ({ default: m.ContextSnapshotPanel }))
+);
+
+export const LazyAlertBanner = lazy(() =>
+  import("@/components/AlertBanner").then(m => ({ default: m.AlertBanner }))
+);
+
+export const LazyEnhancedProjectsTab = lazy(() =>
+  import("@/components/EnhancedProjectsTab").then(m => ({ default: m.EnhancedProjectsTab }))
+);
+
+export const LazyAutomationTab = lazy(() =>
+  import("@/components/AutomationTab").then(m => ({ default: m.AutomationTab }))
+);
+
+export const LazyDeploymentTab = lazy(() =>
+  import("@/components/DeploymentTab").then(m => ({ default: m.DeploymentTab }))
+);
+
+export const LazySettingsTab = lazy(() =>
+  import("@/components/SettingsTab").then(m => ({ default: m.SettingsTab }))
+);

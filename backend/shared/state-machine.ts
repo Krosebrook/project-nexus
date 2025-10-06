@@ -16,15 +16,27 @@ export interface StateMachineConfig<TStage extends string, TContext> {
   onStageFailure?: (stage: TStage, error: Error, context: TContext) => Promise<void>;
   onComplete?: (context: TContext) => Promise<void>;
   onFailure?: (error: Error, context: TContext) => Promise<void>;
+  retryStrategy?: RetryStrategy<TStage>;
+  skipStages?: TStage[];
+}
+
+export interface RetryStrategy<TStage extends string> {
+  maxRetries?: number;
+  retryableStages?: TStage[];
+  shouldRetry?: (stage: TStage, error: Error, attempt: number) => boolean;
+  onRetry?: (stage: TStage, attempt: number, error: Error) => Promise<void>;
 }
 
 export class StateMachine<TStage extends string, TContext> {
   private stages: TStage[];
   private handlers: Record<TStage, StageHandler<TContext>>;
   private config: StateMachineConfig<TStage, TContext>;
+  private stageRetries: Map<TStage, number> = new Map();
 
   constructor(config: StateMachineConfig<TStage, TContext>) {
-    this.stages = config.stages;
+    this.stages = config.skipStages 
+      ? config.stages.filter(s => !config.skipStages!.includes(s))
+      : config.stages;
     this.handlers = config.handlers;
     this.config = config;
   }
@@ -34,6 +46,27 @@ export class StateMachine<TStage extends string, TContext> {
 
     try {
       for (const stage of this.stages) {
+        await this.executeStageWithRetry(stage, context);
+        currentStageIndex++;
+      }
+      
+      await this.config.onComplete?.(context);
+    } catch (error) {
+      await this.config.onFailure?.(error as Error, context);
+      throw error;
+    }
+  }
+
+  private async executeStageWithRetry(stage: TStage, context: TContext): Promise<void> {
+    const maxRetries = this.config.retryStrategy?.maxRetries || 0;
+    const retryableStages = this.config.retryStrategy?.retryableStages || [];
+    const isRetryable = retryableStages.includes(stage);
+
+    let lastError: Error | null = null;
+    let attempt = 0;
+
+    while (attempt <= (isRetryable ? maxRetries : 0)) {
+      try {
         await this.config.onStageStart?.(stage, context);
         
         const handler = this.handlers[stage];
@@ -45,18 +78,35 @@ export class StateMachine<TStage extends string, TContext> {
         
         if (!result.success) {
           const error = new Error(result.message || `Stage ${stage} failed`);
-          await this.config.onStageFailure?.(stage, error, context);
           throw error;
         }
         
         await this.config.onStageComplete?.(stage, result, context);
-        currentStageIndex++;
+        this.stageRetries.set(stage, attempt);
+        return;
+      } catch (error) {
+        lastError = error as Error;
+        attempt++;
+
+        if (attempt > maxRetries || !isRetryable) {
+          await this.config.onStageFailure?.(stage, lastError, context);
+          throw lastError;
+        }
+
+        const shouldRetry = this.config.retryStrategy?.shouldRetry?.(stage, lastError, attempt) ?? true;
+        if (!shouldRetry) {
+          await this.config.onStageFailure?.(stage, lastError, context);
+          throw lastError;
+        }
+
+        await this.config.retryStrategy?.onRetry?.(stage, attempt, lastError);
+        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, attempt - 1), 10000)));
       }
-      
-      await this.config.onComplete?.(context);
-    } catch (error) {
-      await this.config.onFailure?.(error as Error, context);
-      throw error;
+    }
+
+    if (lastError) {
+      await this.config.onStageFailure?.(stage, lastError, context);
+      throw lastError;
     }
   }
 
@@ -80,6 +130,22 @@ export class StateMachine<TStage extends string, TContext> {
     const index = this.getCurrentStageIndex(currentStage);
     if (index === -1) return 0;
     return Math.round(((index + 1) / this.stages.length) * 100);
+  }
+
+  getRetryCount(stage: TStage): number {
+    return this.stageRetries.get(stage) || 0;
+  }
+
+  getTotalRetries(): number {
+    let total = 0;
+    for (const count of this.stageRetries.values()) {
+      total += count;
+    }
+    return total;
+  }
+
+  canSkipStage(stage: TStage): boolean {
+    return this.config.skipStages?.includes(stage) || false;
   }
 }
 

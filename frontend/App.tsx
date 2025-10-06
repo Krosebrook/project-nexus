@@ -1,27 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
-import { EnhancedProjectsTab } from "@/components/EnhancedProjectsTab";
-import { AutomationTab } from "@/components/AutomationTab";
-import { DeploymentTab } from "@/components/DeploymentTab";
-import { SettingsTab } from "@/components/SettingsTab";
-import { SettingsDialog } from "@/components/SettingsDialog";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ContextSnapshotPanel, ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
-import { DeployModal } from "@/components/DeployModal";
-import { LogsModal } from "@/components/LogsModal";
-import { DocsPanel } from "@/components/DocsPanel";
-import { AlertBanner } from "@/components/AlertBanner";
-import { CommandPalette } from "@/components/CommandPalette";
-import { ProjectDetailModal } from "@/components/ProjectDetailModal";
+import { ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
 import { NetworkErrorBanner } from "@/components/NetworkErrorBanner";
-import { FirstVisitTour } from "@/components/FirstVisitTour";
 import { SkipToContent } from "@/components/SkipToContent";
+import { TableSkeleton } from "@/components/LoadingSkeleton";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { Button } from "@/components/ui/button";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
 import type { ContextSnapshot } from "~backend/snapshots/types";
+import {
+  LazyEnhancedProjectsTab,
+  LazyAutomationTab,
+  LazyDeploymentTab,
+  LazySettingsTab,
+  LazySettingsDialog,
+  LazyContextSnapshotPanel,
+  LazyDeployModal,
+  LazyLogsModal,
+  LazyDocsPanel,
+  LazyAlertBanner,
+  LazyCommandPalette,
+  LazyProjectDetailModal,
+  LazyFirstVisitTour,
+} from "@/lib/lazy-components";
 
 type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "settings";
 
@@ -151,9 +155,13 @@ export default function App() {
     <ErrorBoundary>
       <SkipToContent />
       <NetworkErrorBanner />
-      <FirstVisitTour />
+      <Suspense fallback={<div />}>
+        <LazyFirstVisitTour />
+      </Suspense>
       <div className="dark min-h-screen bg-[#0a0a0a] text-foreground">
-        <AlertBanner project={criticalProject} onViewDetails={handleAlertViewDetails} />
+        <Suspense fallback={<div />}>
+          <LazyAlertBanner project={criticalProject} onViewDetails={handleAlertViewDetails} />
+        </Suspense>
         
         <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
           <div className="flex items-center justify-between px-4 h-16">
@@ -231,94 +239,116 @@ export default function App() {
 
             {activeTab === "projects" && (
               <ErrorBoundary>
-                <EnhancedProjectsTab
-                  projects={projects}
-                  onProjectUpdate={loadProjects}
-                />
+                <Suspense fallback={<TableSkeleton rows={8} />}>
+                  <LazyEnhancedProjectsTab
+                    projects={projects}
+                    onProjectUpdate={loadProjects}
+                  />
+                </Suspense>
               </ErrorBoundary>
             )}
 
             {activeTab === "automation" && (
               <ErrorBoundary>
-                {selectedProject ? (
-                  <AutomationTab project={selectedProject} />
-                ) : (
-                  <div className="text-center text-zinc-500 py-12">
-                    Select a project to view automation settings
-                  </div>
-                )}
+                <Suspense fallback={<TableSkeleton rows={8} />}>
+                  {selectedProject ? (
+                    <LazyAutomationTab project={selectedProject} />
+                  ) : (
+                    <div className="text-center text-zinc-500 py-12">
+                      Select a project to view automation settings
+                    </div>
+                  )}
+                </Suspense>
               </ErrorBoundary>
             )}
 
             {activeTab === "deployment" && (
               <ErrorBoundary>
-                {selectedProject ? (
-                  <DeploymentTab project={selectedProject} />
-                ) : (
-                  <div className="text-center text-zinc-500 py-12">
-                    Select a project to view deployment options
-                  </div>
-                )}
+                <Suspense fallback={<TableSkeleton rows={8} />}>
+                  {selectedProject ? (
+                    <LazyDeploymentTab project={selectedProject} />
+                  ) : (
+                    <div className="text-center text-zinc-500 py-12">
+                      Select a project to view deployment options
+                    </div>
+                  )}
+                </Suspense>
               </ErrorBoundary>
             )}
 
             {activeTab === "settings" && (
               <ErrorBoundary>
-                <SettingsTab />
+                <Suspense fallback={<TableSkeleton rows={8} />}>
+                  <LazySettingsTab />
+                </Suspense>
               </ErrorBoundary>
             )}
           </main>
         </div>
 
-        <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+        <Suspense fallback={null}>
+          <LazySettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+        </Suspense>
         
         <div data-tour="context">
-          <ContextSnapshotPanel
-            isOpen={snapshotPanelOpen}
-            onClose={() => setSnapshotPanelOpen(false)}
-            currentProject={selectedProject}
-            onRestore={handleRestoreSnapshot}
-          />
+          <Suspense fallback={null}>
+            <LazyContextSnapshotPanel
+              isOpen={snapshotPanelOpen}
+              onClose={() => setSnapshotPanelOpen(false)}
+              currentProject={selectedProject}
+              onRestore={handleRestoreSnapshot}
+            />
+          </Suspense>
           
           <ContextSnapshotFAB onClick={() => setSnapshotPanelOpen(true)} />
         </div>
         
-        <DeployModal
-          isOpen={deployModalOpen}
-          onClose={() => setDeployModalOpen(false)}
-          project={selectedProject}
-        />
+        <Suspense fallback={null}>
+          <LazyDeployModal
+            isOpen={deployModalOpen}
+            onClose={() => setDeployModalOpen(false)}
+            project={selectedProject}
+          />
+        </Suspense>
         
-        <LogsModal
-          isOpen={logsModalOpen}
-          onClose={() => setLogsModalOpen(false)}
-          project={selectedProject}
-        />
+        <Suspense fallback={null}>
+          <LazyLogsModal
+            isOpen={logsModalOpen}
+            onClose={() => setLogsModalOpen(false)}
+            project={selectedProject}
+          />
+        </Suspense>
         
-        <DocsPanel
-          isOpen={docsPanelOpen}
-          onClose={() => setDocsPanelOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <LazyDocsPanel
+            isOpen={docsPanelOpen}
+            onClose={() => setDocsPanelOpen(false)}
+          />
+        </Suspense>
         
-        <CommandPalette
-          isOpen={commandPaletteOpen}
-          onClose={() => setCommandPaletteOpen(false)}
-          projects={projects}
-          onSelectProject={(project) => {
-            setSelectedProject(project);
-            setActiveTab('projects');
-          }}
-          onAction={handleCommandAction}
-        />
+        <Suspense fallback={null}>
+          <LazyCommandPalette
+            isOpen={commandPaletteOpen}
+            onClose={() => setCommandPaletteOpen(false)}
+            projects={projects}
+            onSelectProject={(project) => {
+              setSelectedProject(project);
+              setActiveTab('projects');
+            }}
+            onAction={handleCommandAction}
+          />
+        </Suspense>
         
         {projectDetailModalOpen && selectedProject && (
-          <ProjectDetailModal
-            onClose={() => setProjectDetailModalOpen(false)}
-            project={selectedProject}
-            latencyData={[]}
-            errorRateData={[]}
-            uptimeData={[]}
-          />
+          <Suspense fallback={null}>
+            <LazyProjectDetailModal
+              onClose={() => setProjectDetailModalOpen(false)}
+              project={selectedProject}
+              latencyData={[]}
+              errorRateData={[]}
+              uptimeData={[]}
+            />
+          </Suspense>
         )}
       </div>
     </ErrorBoundary>

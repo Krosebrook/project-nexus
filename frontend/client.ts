@@ -644,6 +644,7 @@ export namespace contexts {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { analyzeDeploymentRiskWithAI as api_deployments_ai_risk_analysis_analyzeDeploymentRiskWithAI } from "~backend/deployments/ai-risk-analysis";
 import {
     compareDeployments as api_deployments_artifacts_compareDeployments,
     createArtifact as api_deployments_artifacts_createArtifact,
@@ -664,6 +665,11 @@ import {
     removeDependency as api_deployments_dependencies_removeDependency
 } from "~backend/deployments/dependencies";
 import { deploy as api_deployments_deploy_deploy } from "~backend/deployments/deploy";
+import {
+    compareVersions as api_deployments_diff_viewer_compareVersions,
+    getDetailedDiff as api_deployments_diff_viewer_getDetailedDiff,
+    getVersionHistory as api_deployments_diff_viewer_getVersionHistory
+} from "~backend/deployments/diff-viewer";
 import {
     createEnvironment as api_deployments_environments_createEnvironment,
     listEnvironments as api_deployments_environments_listEnvironments,
@@ -703,10 +709,12 @@ export namespace deployments {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.addDependency = this.addDependency.bind(this)
+            this.analyzeDeploymentRiskWithAI = this.analyzeDeploymentRiskWithAI.bind(this)
             this.assessDeploymentRisk = this.assessDeploymentRisk.bind(this)
             this.assignTemplate = this.assignTemplate.bind(this)
             this.cancelQueueItem = this.cancelQueueItem.bind(this)
             this.compareDeployments = this.compareDeployments.bind(this)
+            this.compareVersions = this.compareVersions.bind(this)
             this.createArtifact = this.createArtifact.bind(this)
             this.createEnvironment = this.createEnvironment.bind(this)
             this.createIncident = this.createIncident.bind(this)
@@ -718,9 +726,11 @@ export namespace deployments {
             this.getCoverage = this.getCoverage.bind(this)
             this.getCoverageTrend = this.getCoverageTrend.bind(this)
             this.getDependencyGraph = this.getDependencyGraph.bind(this)
+            this.getDetailedDiff = this.getDetailedDiff.bind(this)
             this.getIncidentStats = this.getIncidentStats.bind(this)
             this.getLatestVersion = this.getLatestVersion.bind(this)
             this.getTemplate = this.getTemplate.bind(this)
+            this.getVersionHistory = this.getVersionHistory.bind(this)
             this.listArtifacts = this.listArtifacts.bind(this)
             this.listDependencies = this.listDependencies.bind(this)
             this.listEnvironments = this.listEnvironments.bind(this)
@@ -746,6 +756,12 @@ export namespace deployments {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_dependencies_addDependency>
         }
 
+        public async analyzeDeploymentRiskWithAI(params: RequestType<typeof api_deployments_ai_risk_analysis_analyzeDeploymentRiskWithAI>): Promise<ResponseType<typeof api_deployments_ai_risk_analysis_analyzeDeploymentRiskWithAI>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/ai-risk-analysis`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_ai_risk_analysis_analyzeDeploymentRiskWithAI>
+        }
+
         public async assessDeploymentRisk(params: RequestType<typeof api_deployments_risk_assessment_assessDeploymentRisk>): Promise<ResponseType<typeof api_deployments_risk_assessment_assessDeploymentRisk>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/deployments/risk-assessment`, {method: "POST", body: JSON.stringify(params)})
@@ -768,6 +784,18 @@ export namespace deployments {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/deployments/compare`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_artifacts_compareDeployments>
+        }
+
+        public async compareVersions(params: RequestType<typeof api_deployments_diff_viewer_compareVersions>): Promise<ResponseType<typeof api_deployments_diff_viewer_compareVersions>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "version_a": params["version_a"],
+                "version_b": params["version_b"],
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.project_id)}/artifacts/${encodeURIComponent(params.artifact_name)}/compare`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_diff_viewer_compareVersions>
         }
 
         public async createArtifact(params: RequestType<typeof api_deployments_artifacts_createArtifact>): Promise<ResponseType<typeof api_deployments_artifacts_createArtifact>> {
@@ -841,6 +869,12 @@ export namespace deployments {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_dependencies_getDependencyGraph>
         }
 
+        public async getDetailedDiff(params: RequestType<typeof api_deployments_diff_viewer_getDetailedDiff>): Promise<ResponseType<typeof api_deployments_diff_viewer_getDetailedDiff>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/deployments/diff/detailed`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_diff_viewer_getDetailedDiff>
+        }
+
         public async getIncidentStats(params: { projectId: number }): Promise<ResponseType<typeof api_deployments_incidents_getIncidentStats>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/incidents/${encodeURIComponent(params.projectId)}/stats`, {method: "GET", body: undefined})
@@ -857,6 +891,17 @@ export namespace deployments {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/deployments/templates/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_templates_getTemplate>
+        }
+
+        public async getVersionHistory(params: RequestType<typeof api_deployments_diff_viewer_getVersionHistory>): Promise<ResponseType<typeof api_deployments_diff_viewer_getVersionHistory>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit: params.limit === undefined ? undefined : String(params.limit),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.project_id)}/artifacts/${encodeURIComponent(params.artifact_name)}/history`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_deployments_diff_viewer_getVersionHistory>
         }
 
         public async listArtifacts(params: { deployment_id: number }): Promise<ResponseType<typeof api_deployments_artifacts_listArtifacts>> {
@@ -1114,6 +1159,10 @@ export namespace files {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import {
+    getNotificationHistory as api_notifications_realtime_getNotificationHistory,
+    streamRealtimeNotifications as api_notifications_realtime_streamRealtimeNotifications
+} from "~backend/notifications/realtime";
 import { streamDeploymentUpdates as api_notifications_stream_streamDeploymentUpdates } from "~backend/notifications/stream";
 
 export namespace notifications {
@@ -1123,7 +1172,15 @@ export namespace notifications {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.getNotificationHistory = this.getNotificationHistory.bind(this)
             this.streamDeploymentUpdates = this.streamDeploymentUpdates.bind(this)
+            this.streamRealtimeNotifications = this.streamRealtimeNotifications.bind(this)
+        }
+
+        public async getNotificationHistory(params: { deploymentId: number }): Promise<ResponseType<typeof api_notifications_realtime_getNotificationHistory>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/notifications/history/${encodeURIComponent(params.deploymentId)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_notifications_realtime_getNotificationHistory>
         }
 
         public async streamDeploymentUpdates(params: RequestType<typeof api_notifications_stream_streamDeploymentUpdates>): Promise<StreamIn<StreamResponse<typeof api_notifications_stream_streamDeploymentUpdates>>> {
@@ -1134,6 +1191,15 @@ export namespace notifications {
             })
 
             return await this.baseClient.createStreamIn(`/notifications/deployments/stream`, {query})
+        }
+
+        public async streamRealtimeNotifications(params: RequestType<typeof api_notifications_realtime_streamRealtimeNotifications>): Promise<StreamIn<StreamResponse<typeof api_notifications_realtime_streamRealtimeNotifications>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                projectId: params.projectId === undefined ? undefined : String(params.projectId),
+            })
+
+            return await this.baseClient.createStreamIn(`/notifications/realtime/stream`, {query})
         }
     }
 }
