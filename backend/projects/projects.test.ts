@@ -49,7 +49,7 @@ describe("Projects API", () => {
   describe("create", () => {
     it("should create new project with valid data", async () => {
       const newProject = {
-        name: "Test Project",
+        name: `Test Project ${Date.now()}`,
         description: "Test Description",
         status: "development" as const,
       };
@@ -71,14 +71,14 @@ describe("Projects API", () => {
         const project = allProjects.projects[0];
         const updates = {
           id: project.id,
-          name: "Updated Name",
+          name: `Updated Name ${Date.now()}`,
           description: project.description || undefined,
           status: project.status,
         };
 
         const result = await update(updates);
         
-        expect(result.name).toBe("Updated Name");
+        expect(result.name).toContain("Updated Name");
       }
     });
   });

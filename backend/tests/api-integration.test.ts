@@ -8,7 +8,7 @@ describe("API Integration Tests", () => {
   describe("Project and Test workflow", () => {
     it("should create project and run test", async () => {
       const project = await createProject({
-        name: "Integration Test Project",
+        name: `Integration Test Project ${Date.now()}`,
         description: "For integration testing",
         status: "development",
       });
@@ -36,7 +36,7 @@ describe("API Integration Tests", () => {
 
     it("should list tests for project", async () => {
       const project = await createProject({
-        name: "Test List Project",
+        name: `Test List Project ${Date.now()}`,
         description: "For testing list",
         status: "development",
       });

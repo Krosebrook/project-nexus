@@ -1,167 +1,215 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Save, FileText, CheckCircle2 } from "lucide-react";
-import backend from "~backend/client";
+import { Plus } from "lucide-react";
+import { DeploymentStatsCards } from "./DeploymentStatsCards";
+import { DeploymentTimeline } from "./DeploymentTimeline";
+import { RecentDeploymentsList } from "./RecentDeploymentsList";
+import { ActiveDeploymentTracker } from "./ActiveDeploymentTracker";
+import { DeploymentDetailsModal } from "./DeploymentDetailsModal";
+import { NewDeploymentWizard } from "./NewDeploymentWizard";
+import { LogsModal } from "./LogsModal";
+import { useToast } from "@/components/ui/use-toast";
+import { mockDeployments } from "@/lib/deployment-data";
+import type { Deployment } from "@/lib/deployment-data";
 import type { Project } from "~backend/projects/types";
-import type { ContextSnapshot } from "~backend/contexts/types";
+import backend from "~backend/client";
 
 interface DeploymentTabProps {
   project: Project;
 }
 
 export function DeploymentTab({ project }: DeploymentTabProps) {
-  const [context, setContext] = useState<ContextSnapshot | null>(null);
-  const [notes, setNotes] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [deployments, setDeployments] = useState<Deployment[]>(mockDeployments);
+  const [selectedDeployment, setSelectedDeployment] = useState<Deployment | null>(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [logsData, setLogsData] = useState<{ deployment: Deployment; stage?: string } | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
-    loadContext();
-  }, [project.id]);
+    loadProjects();
+  }, []);
 
-  const loadContext = async () => {
-    setLoading(true);
-    try {
-      const { snapshot } = await backend.contexts.getCurrent({ project_id: project.id });
-      setContext(snapshot);
-      if (snapshot) {
-        setNotes(snapshot.notes ?? "");
-      }
-    } catch (error) {
-      console.error("Failed to load context:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDeployments(prev => {
+        return prev.map(deployment => {
+          if (deployment.status === "in_progress") {
+            const runningStageIndex = deployment.stages.findIndex(s => s.status === "running");
+            if (runningStageIndex !== -1) {
+              const updatedStages = [...deployment.stages];
+              const currentStage = { ...updatedStages[runningStageIndex] };
+              
+              if (currentStage.startTime) {
+                const elapsedSeconds = Math.floor((Date.now() - currentStage.startTime.getTime()) / 1000);
+                if (elapsedSeconds > 60) {
+                  currentStage.status = "complete";
+                  currentStage.duration = elapsedSeconds;
+                  updatedStages[runningStageIndex] = currentStage;
 
-  const saveContext = async () => {
-    if (!context) return;
-    
-    setSaving(true);
-    try {
-      await backend.contexts.save({
-        project_id: project.id,
-        work_state: context.work_state,
-        open_files: context.open_files,
-        next_steps: context.next_steps,
-        notes,
+                  if (runningStageIndex < updatedStages.length - 1) {
+                    updatedStages[runningStageIndex + 1] = {
+                      ...updatedStages[runningStageIndex + 1],
+                      status: "running",
+                      startTime: new Date()
+                    };
+                  } else {
+                    return {
+                      ...deployment,
+                      status: "success" as const,
+                      stages: updatedStages,
+                      duration: deployment.stages.reduce((sum, s) => sum + (s.duration || 0), 0)
+                    };
+                  }
+                }
+              }
+
+              return {
+                ...deployment,
+                stages: updatedStages,
+                duration: Math.floor((Date.now() - deployment.timestamp.getTime()) / 1000)
+              };
+            }
+          }
+          return deployment;
+        });
       });
-      await loadContext();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      const result = await backend.projects.list();
+      setProjects(result.projects);
     } catch (error) {
-      console.error("Failed to save context:", error);
-    } finally {
-      setSaving(false);
+      console.error("Failed to load projects:", error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-muted-foreground">Loading context...</div>
-      </div>
-    );
-  }
+  const handleSelectDeployment = (deployment: Deployment) => {
+    setSelectedDeployment(deployment);
+    setDetailsModalOpen(true);
+  };
 
-  if (!context) {
-    return <div className="text-muted-foreground">No context available</div>;
-  }
+  const handleViewLogs = (deployment: Deployment, stage?: string) => {
+    setLogsData({ deployment, stage });
+    setLogsModalOpen(true);
+  };
 
-  const workState = context.work_state as any;
+  const handleRollback = (deployment: Deployment) => {
+    toast({
+      title: "Rollback initiated",
+      description: `Rolling back ${deployment.projectName} ${deployment.version}`,
+    });
+  };
+
+  const handleRerun = (deployment: Deployment) => {
+    toast({
+      title: "Deployment queued",
+      description: `Re-running deployment for ${deployment.projectName} ${deployment.version}`,
+    });
+  };
+
+  const handleViewFullLogs = (deployment: Deployment) => {
+    handleViewLogs(deployment);
+    setDetailsModalOpen(false);
+  };
+
+  const handleNewDeployment = (projectId: number, environment: "staging" | "production") => {
+    const targetProject = projects.find(p => p.id === projectId);
+    if (!targetProject) return;
+
+    const newDeployment: Deployment = {
+      id: `deploy_${Date.now()}`,
+      projectId: projectId,
+      projectName: targetProject.name,
+      version: "v1.0.0",
+      status: "in_progress",
+      duration: 0,
+      timestamp: new Date(),
+      environment: environment,
+      commit: {
+        hash: "abc123d",
+        author: "You",
+        authorAvatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=You",
+        message: "New deployment",
+        timestamp: new Date(),
+        githubUrl: "https://github.com"
+      },
+      stages: [
+        { name: "Build", status: "running", startTime: new Date() },
+        { name: "Test", status: "pending" },
+        { name: "Deploy Staging", status: "pending" },
+        { name: "Deploy Production", status: "pending" }
+      ]
+    };
+
+    setDeployments(prev => [newDeployment, ...prev]);
+    
+    toast({
+      title: "Deployment started",
+      description: `Deploying ${targetProject.name} to ${environment}`,
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Context Snapshot</h2>
-          <p className="text-muted-foreground">Current work state and next steps</p>
+          <h2 className="text-2xl font-bold text-foreground">CI/CD Monitoring</h2>
+          <p className="text-muted-foreground">Track and manage deployments across all environments</p>
         </div>
-        <Button onClick={saveContext} disabled={saving}>
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Context"}
+        <Button onClick={() => setWizardOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Deployment
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Work State</CardTitle>
-            <CardDescription>Current task and progress</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Current Task</span>
-                <span className="font-semibold">{workState.current_task}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Progress</span>
-                <span className="font-semibold">{workState.progress}%</span>
-              </div>
-            </div>
-            {workState.blockers && workState.blockers.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold text-muted-foreground">Blockers</h4>
-                <ul className="space-y-1">
-                  {workState.blockers.map((blocker: string, i: number) => (
-                    <li key={i} className="text-sm text-yellow-500">• {blocker}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+      <DeploymentStatsCards deployments={deployments} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Next Steps</CardTitle>
-            <CardDescription>Upcoming tasks and priorities</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {context.next_steps.map((step, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+      <ActiveDeploymentTracker 
+        deployments={deployments}
+        onViewLogs={handleViewLogs}
+      />
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Open Files</CardTitle>
-            <CardDescription>Currently active files</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 md:grid-cols-3">
-              {context.open_files.map((file, i) => (
-                <div key={i} className="flex items-center gap-2 p-2 rounded-md bg-muted">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-mono truncate">{file}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <DeploymentTimeline
+        deployments={deployments}
+        onSelectDeployment={handleSelectDeployment}
+      />
 
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-            <CardDescription>Context-specific notes and observations</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Add notes about current work..."
-              className="min-h-[120px] font-mono text-sm"
-            />
-          </CardContent>
-        </Card>
-      </div>
+      <RecentDeploymentsList
+        deployments={deployments}
+        onViewLogs={handleViewLogs}
+        onViewDetails={handleSelectDeployment}
+        onRollback={handleRollback}
+        onRerun={handleRerun}
+      />
+
+      <DeploymentDetailsModal
+        deployment={selectedDeployment}
+        open={detailsModalOpen}
+        onClose={() => setDetailsModalOpen(false)}
+        onRollback={handleRollback}
+        onRerun={handleRerun}
+        onViewFullLogs={handleViewFullLogs}
+      />
+
+      <NewDeploymentWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        projects={projects}
+        onDeploy={handleNewDeployment}
+      />
+
+      <LogsModal
+        isOpen={logsModalOpen}
+        onClose={() => setLogsModalOpen(false)}
+        project={projects.find(p => p.id === logsData?.deployment.projectId) || null}
+      />
     </div>
   );
 }
