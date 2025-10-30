@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
-import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X } from "lucide-react";
+import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X, Database } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
+import { DatabaseProvisioningTab } from "@/components/DatabaseProvisioningTab";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
 import { NetworkErrorBanner } from "@/components/NetworkErrorBanner";
@@ -27,7 +28,7 @@ import {
   LazyFirstVisitTour,
 } from "@/lib/lazy-components";
 
-type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "settings";
+type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "databases" | "settings";
 
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -148,6 +149,7 @@ export default function App() {
     { id: "projects" as const, label: "Projects", icon: FolderKanban },
     { id: "automation" as const, label: "Automation", icon: Bot },
     { id: "deployment" as const, label: "Deployment", icon: Rocket },
+    { id: "databases" as const, label: "Databases", icon: Database },
     { id: "settings" as const, label: "Settings", icon: Settings },
   ];
 
@@ -272,6 +274,14 @@ export default function App() {
                       Select a project to view deployment options
                     </div>
                   )}
+                </Suspense>
+              </ErrorBoundary>
+            )}
+
+            {activeTab === "databases" && (
+              <ErrorBoundary>
+                <Suspense fallback={<TableSkeleton rows={8} />}>
+                  <DatabaseProvisioningTab />
                 </Suspense>
               </ErrorBoundary>
             )}
