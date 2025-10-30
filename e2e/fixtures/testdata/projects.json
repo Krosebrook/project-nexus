@@ -1,0 +1,34 @@
+[
+  {
+    "id": "e2e-proj-001",
+    "name": "E2E Test Project - Success Flow",
+    "description": "Project for testing successful deployment flows",
+    "status": "active",
+    "createdAt": "2025-10-01T00:00:00Z",
+    "updatedAt": "2025-10-01T00:00:00Z"
+  },
+  {
+    "id": "e2e-proj-002",
+    "name": "E2E Test Project - Rollback Flow",
+    "description": "Project for testing rollback scenarios",
+    "status": "active",
+    "createdAt": "2025-10-01T00:00:00Z",
+    "updatedAt": "2025-10-01T00:00:00Z"
+  },
+  {
+    "id": "e2e-proj-003",
+    "name": "E2E Test Project - Retry Flow",
+    "description": "Project for testing transient error retry scenarios",
+    "status": "active",
+    "createdAt": "2025-10-01T00:00:00Z",
+    "updatedAt": "2025-10-01T00:00:00Z"
+  },
+  {
+    "id": "e2e-proj-004",
+    "name": "E2E Test Project - Timeout Flow",
+    "description": "Project for testing timeout scenarios",
+    "status": "active",
+    "createdAt": "2025-10-01T00:00:00Z",
+    "updatedAt": "2025-10-01T00:00:00Z"
+  }
+]

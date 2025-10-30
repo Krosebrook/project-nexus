@@ -78,7 +78,8 @@ export function RecentDeploymentsList({
             <tbody>
               {deployments.slice(0, 20).map((deployment) => (
                 <tr 
-                  key={deployment.id} 
+                  key={deployment.id}
+                  data-testid={`deployment-row-${deployment.id}`}
                   className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
                   onClick={() => onViewDetails(deployment)}
                 >
@@ -97,7 +98,7 @@ export function RecentDeploymentsList({
                     </Badge>
                   </td>
                   <td className="py-3 px-4 text-sm">
-                    {getStatusBadge(deployment.status)}
+                    <span data-testid="status-badge">{getStatusBadge(deployment.status)}</span>
                   </td>
                   <td className={`py-3 px-4 text-sm font-medium ${getDurationColor(deployment.duration)}`}>
                     {formatDuration(deployment.duration)}

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "e2e-rule-001",
+    "projectId": "e2e-proj-001",
+    "environment": "staging",
+    "requiredApprovals": 1,
+    "approvers": ["e2e-approver-1", "e2e-approver-2"],
+    "autoApprove": false,
+    "conditions": {
+      "blockOnFailedTests": true,
+      "blockOnHighRiskScore": true,
+      "riskScoreThreshold": 7
+    }
+  },
+  {
+    "id": "e2e-rule-002",
+    "projectId": "e2e-proj-002",
+    "environment": "staging",
+    "requiredApprovals": 1,
+    "approvers": ["e2e-approver-1"],
+    "autoApprove": false,
+    "conditions": {
+      "blockOnFailedTests": false,
+      "blockOnHighRiskScore": false
+    }
+  }
+]

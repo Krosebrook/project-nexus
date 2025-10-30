@@ -26,6 +26,7 @@ export function DeploymentDetailsModal({
   onViewFullLogs
 }: DeploymentDetailsModalProps) {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
+  const [showRollbackDialog, setShowRollbackDialog] = useState(false);
 
   if (!deployment) return null;
 
@@ -69,14 +70,14 @@ export function DeploymentDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent data-testid="deployment-details-modal" className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
               <DialogTitle className="text-2xl">{deployment.projectName}</DialogTitle>
               <div className="flex items-center gap-2 mt-2">
                 <Badge variant="outline" className="font-mono">{deployment.version}</Badge>
-                <Badge className={getStatusColor(deployment.status)}>
+                <Badge data-testid="deployment-status-badge" className={getStatusColor(deployment.status)}>
                   {deployment.status.replace("_", " ")}
                 </Badge>
                 <Badge variant="outline" className="capitalize">{deployment.environment}</Badge>
@@ -85,9 +86,10 @@ export function DeploymentDetailsModal({
             <div className="flex gap-2">
               {deployment.status === "failed" && (
                 <Button
+                  data-testid="rollback-btn"
                   variant="outline"
                   size="sm"
-                  onClick={() => onRollback(deployment)}
+                  onClick={() => setShowRollbackDialog(true)}
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Rollback
@@ -153,7 +155,7 @@ export function DeploymentDetailsModal({
                   open={expandedStages.has(stage.name)}
                   onOpenChange={() => toggleStage(stage.name)}
                 >
-                  <div className="border rounded-lg overflow-hidden">
+                  <div data-testid={`timeline-step-${stage.name.toLowerCase().replace(/\s+/g, '_')}`} className="border rounded-lg overflow-hidden">
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                         <div className="flex items-center gap-3">
@@ -217,12 +219,40 @@ export function DeploymentDetailsModal({
           )}
 
           <div className="flex justify-end">
-            <Button onClick={() => onViewFullLogs(deployment)}>
+            <Button data-testid="view-logs-btn" onClick={() => onViewFullLogs(deployment)}>
               View Full Deployment Logs
             </Button>
           </div>
         </div>
       </DialogContent>
+
+      <Dialog open={showRollbackDialog} onOpenChange={setShowRollbackDialog}>
+        <DialogContent data-testid="rollback-confirmation-dialog">
+          <DialogHeader>
+            <DialogTitle>Confirm Rollback</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to rollback deployment {deployment.version}? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRollbackDialog(false)}>
+                Cancel
+              </Button>
+              <Button 
+                data-testid="confirm-rollback-btn"
+                variant="destructive"
+                onClick={() => {
+                  setShowRollbackDialog(false);
+                  onRollback(deployment);
+                }}
+              >
+                Confirm Rollback
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

@@ -1,0 +1,31 @@
+[
+  {
+    "id": "e2e-env-staging",
+    "name": "staging",
+    "projectId": "e2e-proj-001",
+    "type": "staging",
+    "config": {
+      "autoScaling": false,
+      "replicas": 1,
+      "resources": {
+        "cpu": "0.5",
+        "memory": "512Mi"
+      }
+    }
+  },
+  {
+    "id": "e2e-env-production",
+    "name": "production",
+    "projectId": "e2e-proj-001",
+    "type": "production",
+    "config": {
+      "autoScaling": true,
+      "minReplicas": 2,
+      "maxReplicas": 10,
+      "resources": {
+        "cpu": "1",
+        "memory": "1Gi"
+      }
+    }
+  }
+]

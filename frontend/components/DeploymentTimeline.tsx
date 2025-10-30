@@ -41,7 +41,7 @@ export function DeploymentTimeline({ deployments, onSelectDeployment }: Deployme
       <CardHeader>
         <CardTitle>Deployment Timeline (Last 30 Days)</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent data-testid="deployment-timeline">
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
             <div className="flex gap-1 mb-4 text-xs text-muted-foreground">

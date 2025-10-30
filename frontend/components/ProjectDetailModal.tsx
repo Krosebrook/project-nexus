@@ -83,7 +83,7 @@ export function ProjectDetailModal({
   
   return (
     <Dialog open={!!project} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent data-testid="project-detail-modal" className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-start justify-between">
             <div>
@@ -267,7 +267,7 @@ export function ProjectDetailModal({
           <div>
             <h3 className="font-semibold mb-3">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="default" className="w-full">
+              <Button data-testid="create-deployment-btn" variant="default" className="w-full">
                 <Rocket className="h-4 w-4 mr-2" />
                 Deploy
               </Button>

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "e2e-deploy-001",
+    "projectId": "e2e-proj-001",
+    "environment": "staging",
+    "version": "1.0.0",
+    "status": "pending_approval",
+    "triggerType": "manual",
+    "createdBy": "e2e-test-user",
+    "createdAt": "2025-10-30T00:00:00Z",
+    "config": {
+      "buildCommand": "npm run build",
+      "testCommand": "npm test",
+      "deployCommand": "npm run deploy",
+      "healthCheckUrl": "/health",
+      "healthCheckTimeout": 30000
+    }
+  },
+  {
+    "id": "e2e-deploy-002",
+    "projectId": "e2e-proj-002",
+    "environment": "staging",
+    "version": "1.0.1",
+    "status": "pending_approval",
+    "triggerType": "manual",
+    "createdBy": "e2e-test-user",
+    "createdAt": "2025-10-30T00:00:00Z",
+    "config": {
+      "buildCommand": "npm run build",
+      "testCommand": "npm test",
+      "deployCommand": "npm run deploy",
+      "healthCheckUrl": "/health",
+      "healthCheckTimeout": 30000,
+      "simulateFailure": true
+    }
+  },
+  {
+    "id": "e2e-deploy-003",
+    "projectId": "e2e-proj-003",
+    "environment": "staging",
+    "version": "1.0.2",
+    "status": "pending_approval",
+    "triggerType": "manual",
+    "createdBy": "e2e-test-user",
+    "createdAt": "2025-10-30T00:00:00Z",
+    "config": {
+      "buildCommand": "npm run build",
+      "testCommand": "npm test",
+      "deployCommand": "npm run deploy",
+      "healthCheckUrl": "/health",
+      "healthCheckTimeout": 30000,
+      "simulateTransientError": true,
+      "maxRetries": 3
+    }
+  },
+  {
+    "id": "e2e-deploy-004",
+    "projectId": "e2e-proj-004",
+    "environment": "staging",
+    "version": "1.0.3",
+    "status": "pending_approval",
+    "triggerType": "manual",
+    "createdBy": "e2e-test-user",
+    "createdAt": "2025-10-30T00:00:00Z",
+    "config": {
+      "buildCommand": "npm run build",
+      "testCommand": "npm test",
+      "deployCommand": "npm run deploy",
+      "healthCheckUrl": "/health",
+      "healthCheckTimeout": 5000,
+      "simulateTimeout": true
+    }
+  }
+]

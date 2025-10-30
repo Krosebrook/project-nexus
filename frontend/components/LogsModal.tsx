@@ -105,12 +105,12 @@ export function LogsModal({ isOpen, onClose, project }: LogsModalProps) {
   if (!isOpen || !project) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div data-testid="logs-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-6xl h-[90vh] bg-background border rounded-lg shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-300">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-xl font-semibold">Logs: {project.name}</h2>
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button data-testid="close-logs-modal" variant="ghost" size="icon" onClick={onClose}>
             <X className="w-5 h-5" />
           </Button>
         </div>
@@ -163,6 +163,7 @@ export function LogsModal({ isOpen, onClose, project }: LogsModalProps) {
 
         <div
           ref={logsContainerRef}
+          data-testid="log-content"
           className="flex-1 overflow-y-auto bg-black text-green-400 p-4 font-mono text-sm"
         >
           {filteredLogs.length === 0 ? (

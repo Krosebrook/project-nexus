@@ -54,6 +54,7 @@ export function EnhancedProjectCard({
   
   return (
     <Card
+      data-testid={`project-card-${project.id}`}
       className={cn(
         "cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]",
         isSelected && "ring-2 ring-primary"

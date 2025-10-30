@@ -104,7 +104,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
   if (!isOpen || !project) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div data-testid="deploy-modal" className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={!deploying ? onClose : undefined} />
       <div className="relative w-full max-w-md bg-background border rounded-lg shadow-2xl animate-in fade-in zoom-in-95 duration-300">
         <div className="flex items-center justify-between p-6 border-b">
@@ -133,7 +133,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
               <div>
                 <label className="text-sm font-medium mb-2 block">Environment</label>
                 <Select value={environment.toString()} onValueChange={(v) => setEnvironment(parseInt(v, 10))}>
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="environment-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,6 +187,7 @@ export function DeployModal({ isOpen, onClose, project }: DeployModalProps) {
               </div>
 
               <Button 
+                data-testid="create-deployment-submit"
                 onClick={handleDeploy} 
                 disabled={!isChecklistComplete}
                 className="w-full"
