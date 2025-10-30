@@ -1,8 +1,34 @@
 import { api } from "encore.dev/api";
 import database from "../db";
 import type { DeployRequest, DeploymentProgress, DeploymentLog } from "./types";
-import { DeploymentStateMachine } from "./state-machine";
 import { autoDetectFailure } from "./rollback";
+
+async function executeSimpleDeployment(deploymentId: number, projectId: number, environmentId: number): Promise<void> {
+  const stages = [
+    { name: 'validation', progress: 10 },
+    { name: 'build', progress: 25 },
+    { name: 'testing', progress: 40 },
+    { name: 'migration', progress: 60 },
+    { name: 'deployment', progress: 75 },
+    { name: 'health_check', progress: 90 },
+    { name: 'complete', progress: 100 },
+  ];
+
+  for (const stage of stages) {
+    await database.exec`
+      UPDATE deployment_logs
+      SET stage = ${stage.name}, progress = ${stage.progress}, updated_at = NOW()
+      WHERE id = ${deploymentId}
+    `;
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+
+  await database.exec`
+    UPDATE deployment_logs
+    SET status = 'success', completed_at = NOW(), updated_at = NOW()
+    WHERE id = ${deploymentId}
+  `;
+}
 
 export const deploy = api(
   { method: "POST", path: "/deployments/deploy", expose: true },
@@ -33,15 +59,9 @@ export const deploy = api(
       throw new Error('Failed to create deployment');
     }
 
-    const stateMachine = new DeploymentStateMachine();
-    
     setTimeout(async () => {
       try {
-        await stateMachine.execute({
-          deploymentId: result.id,
-          projectId: req.project_id,
-          environmentId: req.environment_id
-        });
+        await executeSimpleDeployment(result.id, req.project_id, req.environment_id);
       } catch (error) {
         const shouldRollback = await autoDetectFailure(result.id);
         

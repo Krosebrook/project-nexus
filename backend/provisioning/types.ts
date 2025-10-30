@@ -66,3 +66,25 @@ export interface NeonConnectionConfig {
   password: string;
   sslmode: string;
 }
+
+export interface SupabaseProjectResponse {
+  id: string;
+  organization_id: string;
+  name: string;
+  region: string;
+  created_at: string;
+  database?: {
+    host: string;
+    version: string;
+  };
+  status: string;
+}
+
+export interface SupabaseConnectionConfig {
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  sslmode: string;
+}

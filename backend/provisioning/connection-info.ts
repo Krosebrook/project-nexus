@@ -6,30 +6,30 @@ interface ConnectionInfoRequest {
 }
 
 interface ConnectionInfo {
+  provider: string;
   host: string;
   port: number;
   database: string;
   username: string;
-  password: string;
-  connectionString: string;
+  connectionString?: string;
   sslRequired: boolean;
+  status: string;
 }
 
 export const getConnectionInfo = api(
   { method: "GET", path: "/provisioning/databases/:id/connection", expose: true },
   async (req: ConnectionInfoRequest): Promise<ConnectionInfo> => {
     const database = await db.queryRow<{
+      provider: string;
       status: string;
-      host: string;
-      port: number;
-      database_name: string;
-      username: string;
-      password_encrypted: string;
-      connection_string: string;
+      host?: string;
+      port?: number;
+      database?: string;
+      username?: string;
+      connection_string?: string;
     }>`
       SELECT 
-        status, host, port, database_name, username,
-        password_encrypted, connection_string
+        provider, status, host, port, database, username, connection_string
       FROM provisioned_databases
       WHERE id = ${req.id}
     `;
@@ -43,13 +43,14 @@ export const getConnectionInfo = api(
     }
 
     return {
-      host: database.host,
-      port: database.port,
-      database: database.database_name,
-      username: database.username,
-      password: database.password_encrypted,
+      provider: database.provider,
+      host: database.host || "",
+      port: database.port || 5432,
+      database: database.database || "",
+      username: database.username || "",
       connectionString: database.connection_string,
       sslRequired: true,
+      status: database.status,
     };
   }
 );

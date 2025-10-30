@@ -96,12 +96,15 @@ async function ensureMigrationTable(): Promise<void> {
 }
 
 async function getDirtyMigrations(): Promise<MigrationRecord[]> {
-  const dirtyMigrations = await db.query<MigrationRecord>`
+  const dirtyMigrations = [];
+  for await (const row of db.query<MigrationRecord>`
     SELECT version, applied_at, checksum, dirty
     FROM schema_migrations
     WHERE dirty = TRUE
     ORDER BY version ASC
-  `;
+  `) {
+    dirtyMigrations.push(row);
+  }
   
   return dirtyMigrations;
 }
@@ -117,14 +120,13 @@ async function setDirtyFlag(version: string, dirty: boolean): Promise<void> {
 }
 
 async function getAppliedMigrations(): Promise<Map<string, MigrationRecord>> {
-  const applied = await db.query<MigrationRecord>`
+  const map = new Map<string, MigrationRecord>();
+  
+  for await (const migration of db.query<MigrationRecord>`
     SELECT version, applied_at, checksum, dirty
     FROM schema_migrations
     ORDER BY version ASC
-  `;
-  
-  const map = new Map<string, MigrationRecord>();
-  for (const migration of applied) {
+  `) {
     map.set(migration.version, migration);
   }
   

@@ -99,9 +99,11 @@ export function DatabaseProvisioningTab() {
   const handleViewConnection = async (id: string) => {
     try {
       const info = await backend.provisioning.getConnectionInfo({ id });
-      const details = `Host: ${info.host}\nPort: ${info.port}\nDatabase: ${info.database}\nUsername: ${info.username}\nPassword: ${info.password}\n\nConnection String:\n${info.connectionString}`;
+      const details = `Provider: ${info.provider}\nHost: ${info.host}\nPort: ${info.port}\nDatabase: ${info.database}\nUsername: ${info.username}\n\nConnection String:\n${info.connectionString || 'N/A'}`;
       
-      navigator.clipboard.writeText(info.connectionString);
+      if (info.connectionString) {
+        navigator.clipboard.writeText(info.connectionString);
+      }
       toast({
         title: "Connection info copied",
         description: "Connection string copied to clipboard",

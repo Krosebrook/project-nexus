@@ -1,10 +1,12 @@
 import { Pool, PoolConfig } from "pg";
-import type { NeonConnectionConfig } from "./types";
+import type { NeonConnectionConfig, SupabaseConnectionConfig } from "./types";
+
+type ConnectionConfig = NeonConnectionConfig | SupabaseConnectionConfig;
 
 export class DatabasePoolManager {
   private pools: Map<string, Pool> = new Map();
 
-  createPool(databaseId: string, config: NeonConnectionConfig): Pool {
+  createPool(databaseId: string, config: ConnectionConfig): Pool {
     if (this.pools.has(databaseId)) {
       return this.pools.get(databaseId)!;
     }

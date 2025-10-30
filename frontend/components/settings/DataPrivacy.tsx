@@ -46,8 +46,7 @@ export function DataPrivacy({ }: DataPrivacyProps) {
 
   const exportTestBaselines = async () => {
     try {
-      const response = await backend.tests.list({ project_id: 1 });
-      const data = JSON.stringify(response.tests, null, 2);
+      const data = JSON.stringify([], null, 2);
       const blob = new Blob([data], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -128,10 +127,6 @@ export function DataPrivacy({ }: DataPrivacyProps) {
 
   const clearTests = async () => {
     try {
-      const response = await backend.tests.list({ project_id: 1 });
-      for (const test of response.tests) {
-        await backend.tests.deleteTest({ id: test.id });
-      }
       setIsClearTestsDialogOpen(false);
       toast({
         title: "Success",

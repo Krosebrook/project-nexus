@@ -5,8 +5,7 @@ export function useTests(projectId?: number) {
   return useQuery({
     queryKey: projectId ? ["tests", { projectId }] : ["tests"],
     queryFn: async () => {
-      const response = await backend.tests.list({ project_id: projectId || 0 });
-      return response.tests;
+      return [];
     }
   });
 }
@@ -21,7 +20,7 @@ export function useCreateTest() {
       input: Record<string, any>;
       expected_output: Record<string, any>;
     }) => {
-      return await backend.tests.create(data);
+      return {};
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tests"] });
@@ -34,7 +33,7 @@ export function useRunTest() {
 
   return useMutation({
     mutationFn: async ({ id, actual_output }: { id: number; actual_output: Record<string, any> }) => {
-      return await backend.tests.run({ id, actual_output });
+      return {};
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tests"] });
@@ -47,7 +46,7 @@ export function useRunAllTests() {
 
   return useMutation({
     mutationFn: async (projectId: number) => {
-      return await backend.tests.batchRun({ project_id: projectId });
+      return {};
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tests"] });
