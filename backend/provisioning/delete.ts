@@ -4,7 +4,6 @@ import { PROVIDERS } from "../config/providers";
 import { neonApiKey, supabaseApiKey } from "../config/secrets";
 import { NeonClient } from "./neon-client";
 import { SupabaseClient } from "./supabase-client";
-import { poolManager } from "./pool-manager";
 
 interface DeleteDatabaseRequest {
   id: string;
@@ -34,8 +33,6 @@ export const deleteDatabase = api(
     `;
 
     try {
-      await poolManager.closePool(req.id);
-
       if (database.provider === "neon" && PROVIDERS.NEON && neonApiKey) {
         const neonClient = new NeonClient(neonApiKey());
         const projectId = extractNeonProjectId(database.connection_string);

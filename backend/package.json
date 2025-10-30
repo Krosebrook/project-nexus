@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "encore.dev": "^1.50.6",
-    "pg": "^8.11.3",
     "vitest": "^3.0.9",
     "zod": "^3.25.76"
   },
