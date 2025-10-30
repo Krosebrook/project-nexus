@@ -8,6 +8,8 @@ import { SkipToContent } from "@/components/SkipToContent";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
 import { Button } from "@/components/ui/button";
+import { DeploymentToast } from "@/components/DeploymentToast";
+import { Toaster } from "@/components/ui/toaster";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
 import type { ContextSnapshot } from "~backend/snapshots/types";
@@ -360,6 +362,9 @@ export default function App() {
             />
           </Suspense>
         )}
+
+        <DeploymentToast enabled={true} />
+        <Toaster />
       </div>
     </ErrorBoundary>
   );

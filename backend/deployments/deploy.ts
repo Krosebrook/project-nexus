@@ -2,8 +2,16 @@ import { api } from "encore.dev/api";
 import database from "../db";
 import type { DeployRequest, DeploymentProgress, DeploymentLog } from "./types";
 import { autoDetectFailure } from "./rollback";
+import { broadcastDeploymentNotification } from "../notifications/sse";
 
 async function executeSimpleDeployment(deploymentId: number, projectId: number, environmentId: number): Promise<void> {
+  const project = await database.queryRow<{ name: string }>`
+    SELECT name FROM projects WHERE id = ${projectId}
+  `;
+  const environment = await database.queryRow<{ name: string }>`
+    SELECT name FROM environments WHERE id = ${environmentId}
+  `;
+
   const stages = [
     { name: 'validation', progress: 10 },
     { name: 'build', progress: 25 },
@@ -20,6 +28,19 @@ async function executeSimpleDeployment(deploymentId: number, projectId: number, 
       SET stage = ${stage.name}, progress = ${stage.progress}, updated_at = NOW()
       WHERE id = ${deploymentId}
     `;
+    
+    await broadcastDeploymentNotification({
+      deploymentId,
+      projectId,
+      projectName: project?.name || 'Unknown',
+      environmentName: environment?.name || 'Unknown',
+      status: 'in_progress',
+      stage: stage.name,
+      progress: stage.progress,
+      message: `Deployment stage: ${stage.name}`,
+      timestamp: new Date(),
+    });
+    
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
@@ -28,6 +49,17 @@ async function executeSimpleDeployment(deploymentId: number, projectId: number, 
     SET status = 'success', completed_at = NOW(), updated_at = NOW()
     WHERE id = ${deploymentId}
   `;
+  
+  await broadcastDeploymentNotification({
+    deploymentId,
+    projectId,
+    projectName: project?.name || 'Unknown',
+    environmentName: environment?.name || 'Unknown',
+    status: 'success',
+    progress: 100,
+    message: 'Deployment completed successfully',
+    timestamp: new Date(),
+  });
 }
 
 export const deploy = api(
