@@ -46,7 +46,6 @@ export class Client {
     public readonly provisioning: provisioning.ServiceClient
     public readonly settings: settings.ServiceClient
     public readonly snapshots: snapshots.ServiceClient
-    public readonly tests: tests.ServiceClient
     public readonly widgets: widgets.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
@@ -75,7 +74,6 @@ export class Client {
         this.provisioning = new provisioning.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
         this.snapshots = new snapshots.ServiceClient(base)
-        this.tests = new tests.ServiceClient(base)
         this.widgets = new widgets.ServiceClient(base)
     }
 
@@ -1175,6 +1173,7 @@ export namespace notifications {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.getNotificationHistory = this.getNotificationHistory.bind(this)
+            this.streamDeploymentEvents = this.streamDeploymentEvents.bind(this)
             this.streamDeploymentUpdates = this.streamDeploymentUpdates.bind(this)
             this.streamRealtimeNotifications = this.streamRealtimeNotifications.bind(this)
         }
@@ -1183,6 +1182,11 @@ export namespace notifications {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/notifications/history/${encodeURIComponent(params.deploymentId)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_notifications_realtime_getNotificationHistory>
+        }
+
+        public async streamDeploymentEvents(options: PickMethods<"GET"> = {}): Promise<globalThis.Response> {
+            options.method ||= "GET";
+            return this.baseClient.callAPI(`/notifications/deployments/events`, options)
         }
 
         public async streamDeploymentUpdates(params: RequestType<typeof api_notifications_stream_streamDeploymentUpdates>): Promise<StreamIn<StreamResponse<typeof api_notifications_stream_streamDeploymentUpdates>>> {
@@ -1422,72 +1426,6 @@ export namespace snapshots {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/snapshots`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_snapshots_save_save>
-        }
-    }
-}
-
-/**
- * Import the endpoint handlers to derive the types for the client.
- */
-import { batchRun as api_tests_batch_run_batchRun } from "~backend/tests/batch_run";
-import { create as api_tests_create_create } from "~backend/tests/create";
-import { deleteTest as api_tests_delete_deleteTest } from "~backend/tests/delete";
-import { list as api_tests_list_list } from "~backend/tests/list";
-import { run as api_tests_run_run } from "~backend/tests/run";
-
-export namespace tests {
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.batchRun = this.batchRun.bind(this)
-            this.create = this.create.bind(this)
-            this.deleteTest = this.deleteTest.bind(this)
-            this.list = this.list.bind(this)
-            this.run = this.run.bind(this)
-        }
-
-        public async batchRun(params: RequestType<typeof api_tests_batch_run_batchRun>): Promise<ResponseType<typeof api_tests_batch_run_batchRun>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests/batch-run`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_batch_run_batchRun>
-        }
-
-        public async create(params: RequestType<typeof api_tests_create_create>): Promise<ResponseType<typeof api_tests_create_create>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_create_create>
-        }
-
-        public async deleteTest(params: { id: number }): Promise<ResponseType<typeof api_tests_delete_deleteTest>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_delete_deleteTest>
-        }
-
-        /**
-         * Retrieves all test cases for a project.
-         */
-        public async list(params: { project_id: number }): Promise<ResponseType<typeof api_tests_list_list>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests/project/${encodeURIComponent(params.project_id)}`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_list_list>
-        }
-
-        /**
-         * Updates test results after running a test case.
-         */
-        public async run(params: RequestType<typeof api_tests_run_run>): Promise<ResponseType<typeof api_tests_run_run>> {
-            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
-            const body: Record<string, any> = {
-                "actual_output": params["actual_output"],
-            }
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/tests/${encodeURIComponent(params.id)}/run`, {method: "POST", body: JSON.stringify(body)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_tests_run_run>
         }
     }
 }
