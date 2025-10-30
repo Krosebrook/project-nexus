@@ -1,294 +1,454 @@
 import { api } from "encore.dev/api";
 import db from "../db";
 
+export type DeploymentPriority = 'low' | 'normal' | 'high' | 'critical';
+export type QueueStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+
 export interface QueuedDeployment {
   id: number;
-  project_id: number;
-  environment_id: number;
-  deployment_id: number | null;
-  queue_position: number;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-  priority: number;
-  scheduled_at: Date | null;
-  started_at: Date | null;
-  completed_at: Date | null;
-  requested_by: string | null;
-  metadata: Record<string, any>;
-  created_at: Date;
-  updated_at: Date;
+  deploymentId: number;
+  projectId: number;
+  projectName: string;
+  environment: string;
+  priority: DeploymentPriority;
+  scheduledFor: Date;
+  status: QueueStatus;
+  queuePosition: number;
+  estimatedStartTime?: Date;
+  createdAt: Date;
 }
 
-export interface EnqueueDeploymentRequest {
-  project_id: number;
-  environment_id: number;
-  priority?: number;
-  scheduled_at?: Date;
-  requested_by?: string;
-  metadata?: Record<string, any>;
+export interface ScheduleDeploymentRequest {
+  projectId: number;
+  environment: string;
+  scheduledFor: Date;
+  priority?: DeploymentPriority;
+  config?: Record<string, any>;
 }
 
-export const enqueueDeployment = api(
-  { method: "POST", path: "/deployments/queue", expose: true },
-  async (req: EnqueueDeploymentRequest): Promise<QueuedDeployment> => {
-    const maxPosition = await db.queryRow<{ max_position: number | null }>`
-      SELECT MAX(queue_position) as max_position
-      FROM deployment_queue
-      WHERE environment_id = ${req.environment_id}
-        AND status = 'queued'
-    `;
+export interface ScheduleDeploymentResponse {
+  queueId: number;
+  deploymentId: number;
+  queuePosition: number;
+  estimatedStartTime: Date;
+}
 
-    const nextPosition = (maxPosition?.max_position || 0) + 1;
+export const scheduleDeployment = api(
+  { method: "POST", path: "/deployments/schedule", expose: true },
+  async (req: ScheduleDeploymentRequest): Promise<ScheduleDeploymentResponse> => {
+    const priority = req.priority || 'normal';
 
-    const queued = await db.queryRow<QueuedDeployment>`
-      INSERT INTO deployment_queue (
+    const deployment = await db.queryRow<{ id: bigint }>`
+      INSERT INTO deployment_logs (
         project_id,
-        environment_id,
-        queue_position,
-        priority,
-        scheduled_at,
-        requested_by,
-        metadata,
-        status
+        environment,
+        status,
+        stage,
+        progress
       ) VALUES (
-        ${req.project_id},
-        ${req.environment_id},
-        ${nextPosition},
-        ${req.priority || 0},
-        ${req.scheduled_at || null},
-        ${req.requested_by || null},
-        ${JSON.stringify(req.metadata || {})},
-        'queued'
+        ${req.projectId},
+        ${req.environment},
+        'pending',
+        'queued',
+        0
       )
-      RETURNING *
+      RETURNING id
     `;
 
-    if (!queued) {
-      throw new Error("Failed to enqueue deployment");
-    }
+    const deploymentId = Number(deployment!.id);
 
-    return queued;
+    const queueEntry = await db.queryRow<{ id: bigint }>`
+      INSERT INTO deployment_queue (
+        deployment_id,
+        project_id,
+        environment,
+        priority,
+        scheduled_for,
+        status,
+        config
+      ) VALUES (
+        ${deploymentId},
+        ${req.projectId},
+        ${req.environment},
+        ${priority},
+        ${req.scheduledFor},
+        'queued',
+        ${JSON.stringify(req.config || {})}
+      )
+      RETURNING id
+    `;
+
+    const queueId = Number(queueEntry!.id);
+
+    const position = await getQueuePosition(queueId);
+    const estimatedStartTime = await calculateEstimatedStartTime(position, req.scheduledFor);
+
+    return {
+      queueId,
+      deploymentId,
+      queuePosition: position,
+      estimatedStartTime
+    };
   }
 );
 
 export interface ListQueueRequest {
-  environment_id?: number;
-  project_id?: number;
-  status?: string;
+  projectId?: number;
+  status?: QueueStatus;
+  limit?: number;
 }
 
 export interface ListQueueResponse {
   queue: QueuedDeployment[];
+  totalCount: number;
 }
 
 export const listQueue = api(
   { method: "GET", path: "/deployments/queue", expose: true },
   async (req: ListQueueRequest): Promise<ListQueueResponse> => {
-    let query = `
-      SELECT * FROM deployment_queue
-      WHERE 1=1
-    `;
-    const params: any[] = [];
-    let paramCount = 0;
+    const limit = req.limit || 50;
 
-    if (req.environment_id) {
-      paramCount++;
-      query += ` AND environment_id = $${paramCount}`;
-      params.push(req.environment_id);
+    let queue;
+    let totalCount;
+
+    if (req.projectId && req.status) {
+      queue = await db.queryAll<{
+        id: number;
+        deployment_id: number;
+        project_id: number;
+        project_name: string;
+        environment: string;
+        priority: DeploymentPriority;
+        scheduled_for: Date;
+        status: QueueStatus;
+        created_at: Date;
+      }>`
+        SELECT 
+          dq.id,
+          dq.deployment_id,
+          dq.project_id,
+          p.name as project_name,
+          dq.environment,
+          dq.priority,
+          dq.scheduled_for,
+          dq.status,
+          dq.created_at
+        FROM deployment_queue dq
+        JOIN projects p ON p.id = dq.project_id
+        WHERE dq.project_id = ${req.projectId} AND dq.status = ${req.status}
+        ORDER BY 
+          CASE dq.priority
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'normal' THEN 3
+            WHEN 'low' THEN 4
+          END,
+          dq.scheduled_for ASC
+        LIMIT ${limit}
+      `;
+
+      totalCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*) as count
+        FROM deployment_queue dq
+        WHERE dq.project_id = ${req.projectId} AND dq.status = ${req.status}
+      `;
+    } else if (req.projectId) {
+      queue = await db.queryAll<{
+        id: number;
+        deployment_id: number;
+        project_id: number;
+        project_name: string;
+        environment: string;
+        priority: DeploymentPriority;
+        scheduled_for: Date;
+        status: QueueStatus;
+        created_at: Date;
+      }>`
+        SELECT 
+          dq.id,
+          dq.deployment_id,
+          dq.project_id,
+          p.name as project_name,
+          dq.environment,
+          dq.priority,
+          dq.scheduled_for,
+          dq.status,
+          dq.created_at
+        FROM deployment_queue dq
+        JOIN projects p ON p.id = dq.project_id
+        WHERE dq.project_id = ${req.projectId}
+        ORDER BY 
+          CASE dq.priority
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'normal' THEN 3
+            WHEN 'low' THEN 4
+          END,
+          dq.scheduled_for ASC
+        LIMIT ${limit}
+      `;
+
+      totalCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*) as count
+        FROM deployment_queue dq
+        WHERE dq.project_id = ${req.projectId}
+      `;
+    } else if (req.status) {
+      queue = await db.queryAll<{
+        id: number;
+        deployment_id: number;
+        project_id: number;
+        project_name: string;
+        environment: string;
+        priority: DeploymentPriority;
+        scheduled_for: Date;
+        status: QueueStatus;
+        created_at: Date;
+      }>`
+        SELECT 
+          dq.id,
+          dq.deployment_id,
+          dq.project_id,
+          p.name as project_name,
+          dq.environment,
+          dq.priority,
+          dq.scheduled_for,
+          dq.status,
+          dq.created_at
+        FROM deployment_queue dq
+        JOIN projects p ON p.id = dq.project_id
+        WHERE dq.status = ${req.status}
+        ORDER BY 
+          CASE dq.priority
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'normal' THEN 3
+            WHEN 'low' THEN 4
+          END,
+          dq.scheduled_for ASC
+        LIMIT ${limit}
+      `;
+
+      totalCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*) as count
+        FROM deployment_queue dq
+        WHERE dq.status = ${req.status}
+      `;
+    } else {
+      queue = await db.queryAll<{
+        id: number;
+        deployment_id: number;
+        project_id: number;
+        project_name: string;
+        environment: string;
+        priority: DeploymentPriority;
+        scheduled_for: Date;
+        status: QueueStatus;
+        created_at: Date;
+      }>`
+        SELECT 
+          dq.id,
+          dq.deployment_id,
+          dq.project_id,
+          p.name as project_name,
+          dq.environment,
+          dq.priority,
+          dq.scheduled_for,
+          dq.status,
+          dq.created_at
+        FROM deployment_queue dq
+        JOIN projects p ON p.id = dq.project_id
+        ORDER BY 
+          CASE dq.priority
+            WHEN 'critical' THEN 1
+            WHEN 'high' THEN 2
+            WHEN 'normal' THEN 3
+            WHEN 'low' THEN 4
+          END,
+          dq.scheduled_for ASC
+        LIMIT ${limit}
+      `;
+
+      totalCount = await db.queryRow<{ count: number }>`
+        SELECT COUNT(*) as count
+        FROM deployment_queue dq
+      `;
     }
 
-    if (req.project_id) {
-      paramCount++;
-      query += ` AND project_id = $${paramCount}`;
-      params.push(req.project_id);
-    }
+    const queueWithPositions = await Promise.all(
+      queue.map(async (item: any, index: number) => {
+        const position = index + 1;
+        const estimatedStartTime = await calculateEstimatedStartTime(position, item.scheduled_for);
 
-    if (req.status) {
-      paramCount++;
-      query += ` AND status = $${paramCount}`;
-      params.push(req.status);
-    }
+        return {
+          id: item.id,
+          deploymentId: item.deployment_id,
+          projectId: item.project_id,
+          projectName: item.project_name,
+          environment: item.environment,
+          priority: item.priority,
+          scheduledFor: item.scheduled_for,
+          status: item.status,
+          queuePosition: position,
+          estimatedStartTime,
+          createdAt: item.created_at
+        };
+      })
+    );
 
-    query += ` ORDER BY priority DESC, queue_position ASC`;
-
-    const queue = await db.queryAll<QueuedDeployment>(query as any, ...params);
-
-    return { queue };
+    return {
+      queue: queueWithPositions,
+      totalCount: totalCount?.count || 0
+    };
   }
 );
 
-export interface UpdateQueueItemRequest {
-  id: number;
-  status?: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
-  deployment_id?: number;
-  priority?: number;
+export interface CancelQueuedDeploymentRequest {
+  queueId: number;
 }
 
-export const updateQueueItem = api(
-  { method: "PUT", path: "/deployments/queue/:id", expose: true },
-  async (req: UpdateQueueItemRequest): Promise<QueuedDeployment> => {
-    const updates: string[] = ['updated_at = NOW()'];
-    const params: any[] = [req.id];
-    let paramCount = 1;
+export interface CancelQueuedDeploymentResponse {
+  success: boolean;
+}
 
-    if (req.status) {
-      paramCount++;
-      updates.push(`status = $${paramCount}`);
-      params.push(req.status);
-
-      if (req.status === 'running') {
-        updates.push('started_at = NOW()');
-      } else if (req.status === 'completed' || req.status === 'failed' || req.status === 'cancelled') {
-        updates.push('completed_at = NOW()');
-      }
-    }
-
-    if (req.deployment_id) {
-      paramCount++;
-      updates.push(`deployment_id = $${paramCount}`);
-      params.push(req.deployment_id);
-    }
-
-    if (req.priority !== undefined) {
-      paramCount++;
-      updates.push(`priority = $${paramCount}`);
-      params.push(req.priority);
-    }
-
-    const query = `
-      UPDATE deployment_queue
-      SET ${updates.join(', ')}
-      WHERE id = $1
-      RETURNING *
+export const cancelQueued = api(
+  { method: "POST", path: "/deployments/queue/:queueId/cancel", expose: true },
+  async (req: CancelQueuedDeploymentRequest): Promise<CancelQueuedDeploymentResponse> => {
+    const queueEntry = await db.queryRow<{ deployment_id: number; status: string }>`
+      SELECT deployment_id, status
+      FROM deployment_queue
+      WHERE id = ${req.queueId}
     `;
 
-    const updated = await db.queryRow<QueuedDeployment>(query as any, ...params);
-
-    if (!updated) {
-      throw new Error("Queue item not found");
+    if (!queueEntry) {
+      throw new Error("Queue entry not found");
     }
 
-    return updated;
-  }
-);
+    if (queueEntry.status === 'running') {
+      throw new Error("Cannot cancel deployment that is already running");
+    }
 
-export interface CancelQueueItemRequest {
-  id: number;
-}
-
-export const cancelQueueItem = api(
-  { method: "DELETE", path: "/deployments/queue/:id", expose: true },
-  async ({ id }: CancelQueueItemRequest): Promise<{ success: boolean }> => {
     await db.exec`
       UPDATE deployment_queue
-      SET status = 'cancelled', completed_at = NOW(), updated_at = NOW()
-      WHERE id = ${id}
+      SET status = 'cancelled',
+          updated_at = NOW()
+      WHERE id = ${req.queueId}
+    `;
+
+    await db.exec`
+      UPDATE deployment_logs
+      SET status = 'cancelled',
+          stage = 'cancelled'
+      WHERE id = ${queueEntry.deployment_id}
     `;
 
     return { success: true };
   }
 );
 
-export interface DeploymentSchedule {
-  id: number;
-  project_id: number;
-  environment_id: number;
-  name: string;
-  description: string | null;
-  cron_expression: string | null;
-  scheduled_time: Date | null;
-  is_recurring: boolean;
-  is_active: boolean;
-  last_execution: Date | null;
-  next_execution: Date | null;
-  deployment_config: Record<string, any>;
-  created_by: string | null;
-  created_at: Date;
-  updated_at: Date;
+async function getQueuePosition(queueId: number): Promise<number> {
+  const result = await db.queryRow<{ position: number }>`
+    WITH ranked_queue AS (
+      SELECT 
+        id,
+        ROW_NUMBER() OVER (
+          ORDER BY 
+            CASE priority
+              WHEN 'critical' THEN 1
+              WHEN 'high' THEN 2
+              WHEN 'normal' THEN 3
+              WHEN 'low' THEN 4
+            END,
+            scheduled_for ASC
+        ) as position
+      FROM deployment_queue
+      WHERE status = 'queued'
+    )
+    SELECT position
+    FROM ranked_queue
+    WHERE id = ${queueId}
+  `;
+
+  return result?.position || 0;
 }
 
-export interface CreateScheduleRequest {
-  project_id: number;
-  environment_id: number;
-  name: string;
-  description?: string;
-  cron_expression?: string;
-  scheduled_time?: Date;
-  is_recurring?: boolean;
-  deployment_config?: Record<string, any>;
-  created_by?: string;
+async function calculateEstimatedStartTime(position: number, scheduledFor: Date): Promise<Date> {
+  const avgDeploymentDuration = 10 * 60 * 1000;
+  
+  const estimatedDelay = (position - 1) * avgDeploymentDuration;
+  
+  const estimatedStart = new Date(scheduledFor.getTime() + estimatedDelay);
+  
+  const now = new Date();
+  if (estimatedStart < now) {
+    return now;
+  }
+  
+  return estimatedStart;
 }
 
-export const createSchedule = api(
-  { method: "POST", path: "/deployments/schedules", expose: true },
-  async (req: CreateScheduleRequest): Promise<DeploymentSchedule> => {
-    const schedule = await db.queryRow<DeploymentSchedule>`
-      INSERT INTO deployment_schedules (
-        project_id,
-        environment_id,
-        name,
-        description,
-        cron_expression,
-        scheduled_time,
-        is_recurring,
-        deployment_config,
-        created_by
-      ) VALUES (
-        ${req.project_id},
-        ${req.environment_id},
-        ${req.name},
-        ${req.description || null},
-        ${req.cron_expression || null},
-        ${req.scheduled_time || null},
-        ${req.is_recurring || false},
-        ${JSON.stringify(req.deployment_config || {})},
-        ${req.created_by || null}
-      )
-      RETURNING *
+export async function processQueue(): Promise<void> {
+  const concurrencyLimits = await db.queryAll<{
+    project_id: number;
+    max_concurrent: number;
+    current_running: number;
+  }>`
+    SELECT 
+      p.id as project_id,
+      COALESCE(p.metrics->>'max_concurrent_deployments', '2')::integer as max_concurrent,
+      COUNT(dq.id) FILTER (WHERE dq.status = 'running') as current_running
+    FROM projects p
+    LEFT JOIN deployment_queue dq ON dq.project_id = p.id AND dq.status = 'running'
+    GROUP BY p.id
+  `;
+
+  const limits = new Map(
+    concurrencyLimits.map((l: any) => [l.project_id, { max: l.max_concurrent, current: l.current_running }])
+  );
+
+  const readyDeployments = await db.queryAll<{
+    id: number;
+    deployment_id: number;
+    project_id: number;
+    scheduled_for: Date;
+  }>`
+    SELECT id, deployment_id, project_id, scheduled_for
+    FROM deployment_queue
+    WHERE status = 'queued'
+      AND scheduled_for <= NOW()
+    ORDER BY 
+      CASE priority
+        WHEN 'critical' THEN 1
+        WHEN 'high' THEN 2
+        WHEN 'normal' THEN 3
+        WHEN 'low' THEN 4
+      END,
+      scheduled_for ASC
+  `;
+
+  for (const deployment of readyDeployments) {
+    const limit = limits.get(deployment.project_id) || { max: 2, current: 0 };
+    
+    if (limit.current >= limit.max) {
+      continue;
+    }
+
+    await db.exec`
+      UPDATE deployment_queue
+      SET status = 'running',
+          started_at = NOW(),
+          updated_at = NOW()
+      WHERE id = ${deployment.id}
     `;
 
-    if (!schedule) {
-      throw new Error("Failed to create schedule");
-    }
-
-    return schedule;
-  }
-);
-
-export interface ListSchedulesRequest {
-  project_id?: number;
-  is_active?: boolean;
-}
-
-export interface ListSchedulesResponse {
-  schedules: DeploymentSchedule[];
-}
-
-export const listSchedules = api(
-  { method: "GET", path: "/deployments/schedules", expose: true },
-  async (req: ListSchedulesRequest): Promise<ListSchedulesResponse> => {
-    let query = `
-      SELECT * FROM deployment_schedules
-      WHERE 1=1
+    await db.exec`
+      UPDATE deployment_logs
+      SET status = 'running',
+          stage = 'starting'
+      WHERE id = ${deployment.deployment_id}
     `;
-    const params: any[] = [];
-    let paramCount = 0;
 
-    if (req.project_id) {
-      paramCount++;
-      query += ` AND project_id = $${paramCount}`;
-      params.push(req.project_id);
-    }
-
-    if (req.is_active !== undefined) {
-      paramCount++;
-      query += ` AND is_active = $${paramCount}`;
-      params.push(req.is_active);
-    }
-
-    query += ` ORDER BY next_execution ASC NULLS LAST, created_at DESC`;
-
-    const schedules = await db.queryAll<DeploymentSchedule>(query as any, ...params);
-
-    return { schedules };
+    limit.current++;
+    limits.set(deployment.project_id, limit);
   }
-);
+}

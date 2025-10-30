@@ -1,105 +1,92 @@
-CREATE TABLE IF NOT EXISTS migration_rollback_log (
+CREATE TABLE IF NOT EXISTS migration_rollback_audit (
   id BIGSERIAL PRIMARY KEY,
+  migration_name TEXT NOT NULL,
   migration_version TEXT NOT NULL,
-  rollback_attempted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  rollback_completed_at TIMESTAMPTZ,
-  rollback_status TEXT NOT NULL DEFAULT 'pending',
-  rollback_errors TEXT,
-  table_snapshots JSONB DEFAULT '{}',
+  rollback_type TEXT NOT NULL,
+  initiated_by TEXT,
+  safety_checks_passed BOOLEAN NOT NULL DEFAULT false,
   affected_tables TEXT[],
-  performed_by TEXT,
-  metadata JSONB DEFAULT '{}'
+  affected_records_count JSONB DEFAULT '{}',
+  warnings TEXT[],
+  executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  status TEXT NOT NULL DEFAULT 'pending',
+  error_message TEXT
 );
 
-CREATE INDEX IF NOT EXISTS idx_migration_rollback_log_version ON migration_rollback_log(migration_version);
-CREATE INDEX IF NOT EXISTS idx_migration_rollback_log_status ON migration_rollback_log(rollback_status);
-CREATE INDEX IF NOT EXISTS idx_migration_rollback_log_attempted_at ON migration_rollback_log(rollback_attempted_at DESC);
+CREATE INDEX idx_rollback_audit_migration_name ON migration_rollback_audit(migration_name);
+CREATE INDEX idx_rollback_audit_executed_at ON migration_rollback_audit(executed_at DESC);
+CREATE INDEX idx_rollback_audit_status ON migration_rollback_audit(status);
 
 CREATE TABLE IF NOT EXISTS migration_dependencies (
   id BIGSERIAL PRIMARY KEY,
-  migration_version TEXT NOT NULL UNIQUE,
-  depends_on_migrations TEXT[] DEFAULT ARRAY[]::TEXT[],
-  dependent_migrations TEXT[] DEFAULT ARRAY[]::TEXT[],
-  has_data_migration BOOLEAN NOT NULL DEFAULT false,
-  has_destructive_changes BOOLEAN NOT NULL DEFAULT false,
-  rollback_safe BOOLEAN NOT NULL DEFAULT true,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  parent_table TEXT NOT NULL,
+  child_table TEXT NOT NULL,
+  foreign_key_name TEXT NOT NULL,
+  on_delete_action TEXT NOT NULL DEFAULT 'NO ACTION',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(parent_table, child_table, foreign_key_name)
 );
 
-CREATE INDEX IF NOT EXISTS idx_migration_dependencies_version ON migration_dependencies(migration_version);
-CREATE INDEX IF NOT EXISTS idx_migration_dependencies_rollback_safe ON migration_dependencies(rollback_safe);
+CREATE INDEX idx_migration_dependencies_parent ON migration_dependencies(parent_table);
+CREATE INDEX idx_migration_dependencies_child ON migration_dependencies(child_table);
 
-INSERT INTO migration_dependencies (migration_version, has_data_migration, has_destructive_changes, rollback_safe) VALUES
-('001_create_schema', false, false, true),
-('002_seed_data', true, false, true),
-('003_add_missing_projects', true, false, true),
-('004_add_context_snapshots', false, false, true),
-('005_add_environments_and_rollback', false, false, true),
-('006_add_backup_restore', false, false, true),
-('007_add_collaboration', false, false, true),
-('008_add_widgets', true, false, true),
-('009_add_approval_workflow', false, false, true),
-('010_add_advanced_alerting', false, false, true),
-('011_add_error_logs', false, false, true)
-ON CONFLICT (migration_version) DO NOTHING;
+INSERT INTO migration_dependencies (parent_table, child_table, foreign_key_name, on_delete_action) VALUES
+  ('projects', 'deployment_logs', 'deployment_logs_project_id_fkey', 'CASCADE'),
+  ('projects', 'test_cases', 'test_cases_project_id_fkey', 'CASCADE'),
+  ('projects', 'alert_rules', 'alert_rules_project_id_fkey', 'CASCADE'),
+  ('deployment_logs', 'deployment_artifacts', 'deployment_artifacts_deployment_id_fkey', 'CASCADE'),
+  ('deployment_logs', 'deployment_diffs', 'deployment_diffs_deployment_a_fkey', 'CASCADE'),
+  ('deployment_logs', 'deployment_queue', 'deployment_queue_deployment_id_fkey', 'SET NULL')
+ON CONFLICT (parent_table, child_table, foreign_key_name) DO NOTHING;
 
-CREATE OR REPLACE FUNCTION validate_migration_rollback(target_migration TEXT)
-RETURNS TABLE (
-  can_rollback BOOLEAN,
-  blocking_reasons TEXT[]
-) AS $$
+CREATE OR REPLACE FUNCTION check_orphaned_records(
+  p_table_name TEXT,
+  p_referenced_table TEXT,
+  p_foreign_key_column TEXT
+)
+RETURNS JSONB AS $$
 DECLARE
-  dependent_migrations TEXT[];
-  has_destructive BOOLEAN;
-  reasons TEXT[] := ARRAY[]::TEXT[];
+  orphan_count BIGINT;
+  result JSONB;
 BEGIN
-  SELECT 
-    md.dependent_migrations,
-    md.has_destructive_changes
-  INTO dependent_migrations, has_destructive
-  FROM migration_dependencies md
-  WHERE md.migration_version = target_migration;
+  EXECUTE format(
+    'SELECT COUNT(*) FROM %I WHERE %I NOT IN (SELECT id FROM %I)',
+    p_table_name,
+    p_foreign_key_column,
+    p_referenced_table
+  ) INTO orphan_count;
   
-  IF NOT FOUND THEN
-    RETURN QUERY SELECT false, ARRAY['Migration version not found'];
-    RETURN;
-  END IF;
+  result := jsonb_build_object(
+    'table', p_table_name,
+    'orphaned_count', orphan_count,
+    'has_orphans', orphan_count > 0
+  );
   
-  IF has_destructive THEN
-    reasons := array_append(reasons, 'Migration contains destructive changes');
-  END IF;
-  
-  IF array_length(dependent_migrations, 1) > 0 THEN
-    reasons := array_append(reasons, 
-      'Migration has dependent migrations: ' || array_to_string(dependent_migrations, ', '));
-  END IF;
-  
-  IF array_length(reasons, 1) = 0 THEN
-    RETURN QUERY SELECT true, ARRAY[]::TEXT[];
-  ELSE
-    RETURN QUERY SELECT false, reasons;
-  END IF;
+  RETURN result;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE OR REPLACE FUNCTION log_migration_rollback(
-  p_migration_version TEXT,
-  p_performed_by TEXT DEFAULT NULL
-)
-RETURNS BIGINT AS $$
+CREATE OR REPLACE FUNCTION check_active_deployments()
+RETURNS JSONB AS $$
 DECLARE
-  rollback_id BIGINT;
+  active_count BIGINT;
+  result JSONB;
 BEGIN
-  INSERT INTO migration_rollback_log (
-    migration_version,
-    performed_by,
-    rollback_status
-  ) VALUES (
-    p_migration_version,
-    p_performed_by,
-    'in_progress'
-  ) RETURNING id INTO rollback_id;
+  SELECT COUNT(*) INTO active_count
+  FROM deployment_logs
+  WHERE status IN ('running', 'pending', 'queued');
   
-  RETURN rollback_id;
+  result := jsonb_build_object(
+    'active_deployments', active_count,
+    'has_active', active_count > 0,
+    'warning', CASE 
+      WHEN active_count > 0 
+      THEN format('%s active deployments will be affected', active_count)
+      ELSE NULL
+    END
+  );
+  
+  RETURN result;
 END;
 $$ LANGUAGE plpgsql;

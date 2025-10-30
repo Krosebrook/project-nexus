@@ -4,19 +4,20 @@ import db from "../db";
 export interface DeploymentTemplate {
   id: number;
   name: string;
-  description: string | null;
-  template_type: string;
-  stages: string[];
-  stage_config: Record<string, any>;
-  environment_config: Record<string, any>;
-  required_approvals: number;
-  auto_rollback_on_failure: boolean;
-  health_check_config: Record<string, any>;
-  notification_config: Record<string, any>;
-  is_public: boolean;
-  created_by: string | null;
-  created_at: Date;
-  updated_at: Date;
+  description: string;
+  category: string;
+  templateType: string;
+  config: Record<string, any>;
+  stages: Array<{ name: string; description: string }>;
+  variables: Array<{
+    name: string;
+    description: string;
+    required?: boolean;
+    default?: string;
+  }>;
+  diagramData?: Record<string, any>;
+  isBuiltIn: boolean;
+  usageCount: number;
 }
 
 export interface ListTemplatesResponse {
@@ -26,152 +27,91 @@ export interface ListTemplatesResponse {
 export const listTemplates = api(
   { method: "GET", path: "/deployments/templates", expose: true },
   async (): Promise<ListTemplatesResponse> => {
-    const templates = await db.queryAll<DeploymentTemplate>`
-      SELECT * FROM deployment_templates
-      WHERE is_public = true
-      ORDER BY name ASC
+    const templates = await db.queryAll<{
+      id: number;
+      name: string;
+      description: string;
+      category: string;
+      template_type: string;
+      config: string;
+      stages: string;
+      variables: string;
+      diagram_data: string | null;
+      is_built_in: boolean;
+      usage_count: number;
+    }>`
+      SELECT 
+        id,
+        name,
+        description,
+        category,
+        template_type,
+        config::text,
+        stages::text,
+        variables::text,
+        diagram_data::text,
+        is_built_in,
+        usage_count
+      FROM deployment_templates
+      ORDER BY category, usage_count DESC, name
     `;
 
-    return { templates };
+    return {
+      templates: templates.map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        category: t.category,
+        templateType: t.template_type,
+        config: JSON.parse(t.config),
+        stages: JSON.parse(t.stages),
+        variables: JSON.parse(t.variables),
+        diagramData: t.diagram_data ? JSON.parse(t.diagram_data) : undefined,
+        isBuiltIn: t.is_built_in,
+        usageCount: t.usage_count,
+      })),
+    };
   }
 );
 
 export interface GetTemplateRequest {
-  id: number;
+  templateId: number;
 }
 
-export const getTemplate = api(
-  { method: "GET", path: "/deployments/templates/:id", expose: true },
-  async ({ id }: GetTemplateRequest): Promise<DeploymentTemplate> => {
-    const template = await db.queryRow<DeploymentTemplate>`
-      SELECT * FROM deployment_templates WHERE id = ${id}
-    `;
-
-    if (!template) {
-      throw new Error("Template not found");
-    }
-
-    return template;
-  }
-);
-
-export interface CreateTemplateRequest {
-  name: string;
-  description?: string;
-  template_type: string;
-  stages: string[];
-  stage_config: Record<string, any>;
-  environment_config?: Record<string, any>;
-  required_approvals?: number;
-  auto_rollback_on_failure?: boolean;
-  health_check_config?: Record<string, any>;
-  notification_config?: Record<string, any>;
-  is_public?: boolean;
-  created_by?: string;
-}
-
-export const createTemplate = api(
-  { method: "POST", path: "/deployments/templates", expose: true },
-  async (req: CreateTemplateRequest): Promise<DeploymentTemplate> => {
-    const template = await db.queryRow<DeploymentTemplate>`
-      INSERT INTO deployment_templates (
-        name,
-        description,
-        template_type,
-        stages,
-        stage_config,
-        environment_config,
-        required_approvals,
-        auto_rollback_on_failure,
-        health_check_config,
-        notification_config,
-        is_public,
-        created_by
-      ) VALUES (
-        ${req.name},
-        ${req.description || null},
-        ${req.template_type},
-        ${JSON.stringify(req.stages)},
-        ${JSON.stringify(req.stage_config)},
-        ${JSON.stringify(req.environment_config || {})},
-        ${req.required_approvals || 0},
-        ${req.auto_rollback_on_failure || false},
-        ${JSON.stringify(req.health_check_config || {})},
-        ${JSON.stringify(req.notification_config || {})},
-        ${req.is_public !== undefined ? req.is_public : true},
-        ${req.created_by || null}
-      )
-      RETURNING *
-    `;
-
-    if (!template) {
-      throw new Error("Failed to create template");
-    }
-
-    return template;
-  }
-);
-
-export interface AssignTemplateRequest {
-  project_id: number;
-  template_id: number;
-  is_default?: boolean;
-  override_config?: Record<string, any>;
-}
-
-export interface ProjectTemplate {
-  id: number;
-  project_id: number;
-  template_id: number;
-  is_default: boolean;
-  override_config: Record<string, any>;
-  created_at: Date;
+export interface GetTemplateResponse {
   template: DeploymentTemplate;
 }
 
-export const assignTemplate = api(
-  { method: "POST", path: "/deployments/templates/assign", expose: true },
-  async (req: AssignTemplateRequest): Promise<ProjectTemplate> => {
-    if (req.is_default) {
-      await db.exec`
-        UPDATE project_deployment_templates
-        SET is_default = false
-        WHERE project_id = ${req.project_id}
-      `;
-    }
-
-    const assignment = await db.queryRow<{
+export const getTemplate = api(
+  { method: "GET", path: "/deployments/templates/:templateId", expose: true },
+  async ({ templateId }: GetTemplateRequest): Promise<GetTemplateResponse> => {
+    const template = await db.queryRow<{
       id: number;
-      project_id: number;
-      template_id: number;
-      is_default: boolean;
-      override_config: Record<string, any>;
-      created_at: Date;
+      name: string;
+      description: string;
+      category: string;
+      template_type: string;
+      config: string;
+      stages: string;
+      variables: string;
+      diagram_data: string | null;
+      is_built_in: boolean;
+      usage_count: number;
     }>`
-      INSERT INTO project_deployment_templates (
-        project_id,
-        template_id,
-        is_default,
-        override_config
-      ) VALUES (
-        ${req.project_id},
-        ${req.template_id},
-        ${req.is_default || false},
-        ${JSON.stringify(req.override_config || {})}
-      )
-      ON CONFLICT (project_id, template_id)
-      DO UPDATE SET
-        is_default = EXCLUDED.is_default,
-        override_config = EXCLUDED.override_config
-      RETURNING *
-    `;
-
-    if (!assignment) {
-      throw new Error("Failed to assign template");
-    }
-
-    const template = await db.queryRow<DeploymentTemplate>`
-      SELECT * FROM deployment_templates WHERE id = ${req.template_id}
+      SELECT 
+        id,
+        name,
+        description,
+        category,
+        template_type,
+        config::text,
+        stages::text,
+        variables::text,
+        diagram_data::text,
+        is_built_in,
+        usage_count
+      FROM deployment_templates
+      WHERE id = ${templateId}
     `;
 
     if (!template) {
@@ -179,51 +119,99 @@ export const assignTemplate = api(
     }
 
     return {
-      ...assignment,
-      template,
+      template: {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        templateType: template.template_type,
+        config: JSON.parse(template.config),
+        stages: JSON.parse(template.stages),
+        variables: JSON.parse(template.variables),
+        diagramData: template.diagram_data ? JSON.parse(template.diagram_data) : undefined,
+        isBuiltIn: template.is_built_in,
+        usageCount: template.usage_count,
+      },
     };
   }
 );
 
-export interface ListProjectTemplatesRequest {
-  project_id: number;
+export interface CreateFromTemplateRequest {
+  templateId: number;
+  projectId: number;
+  environment: string;
+  variableValues: Record<string, string>;
 }
 
-export interface ListProjectTemplatesResponse {
-  templates: ProjectTemplate[];
+export interface CreateFromTemplateResponse {
+  deploymentId: number;
+  config: Record<string, any>;
 }
 
-export const listProjectTemplates = api(
-  { method: "GET", path: "/projects/:project_id/templates", expose: true },
-  async ({ project_id }: ListProjectTemplatesRequest): Promise<ListProjectTemplatesResponse> => {
-    const assignments = await db.queryAll<{
-      id: number;
-      project_id: number;
-      template_id: number;
-      is_default: boolean;
-      override_config: Record<string, any>;
-      created_at: Date;
+export const createFromTemplate = api(
+  { method: "POST", path: "/deployments/from-template", expose: true },
+  async (req: CreateFromTemplateRequest): Promise<CreateFromTemplateResponse> => {
+    const template = await db.queryRow<{
+      config: string;
+      variables: string;
     }>`
-      SELECT * FROM project_deployment_templates
-      WHERE project_id = ${project_id}
-      ORDER BY is_default DESC, created_at DESC
+      SELECT config::text, variables::text
+      FROM deployment_templates
+      WHERE id = ${req.templateId}
     `;
 
-    const templates: ProjectTemplate[] = [];
+    if (!template) {
+      throw new Error("Template not found");
+    }
 
-    for (const assignment of assignments) {
-      const template = await db.queryRow<DeploymentTemplate>`
-        SELECT * FROM deployment_templates WHERE id = ${assignment.template_id}
-      `;
+    const config = JSON.parse(template.config);
+    const variables = JSON.parse(template.variables);
 
-      if (template) {
-        templates.push({
-          ...assignment,
-          template,
-        });
+    for (const variable of variables) {
+      if (variable.required && !req.variableValues[variable.name]) {
+        throw new Error(`Missing required variable: ${variable.name}`);
       }
     }
 
-    return { templates };
+    const result = await db.queryRow<{ id: bigint }>`
+      INSERT INTO deployment_logs (
+        project_id,
+        environment,
+        status,
+        stage,
+        progress,
+        logs
+      ) VALUES (
+        ${req.projectId},
+        ${req.environment},
+        'pending',
+        'template_init',
+        0,
+        'Created from template'
+      )
+      RETURNING id
+    `;
+
+    const deploymentId = Number(result!.id);
+
+    await db.exec`
+      INSERT INTO deployment_from_template (
+        deployment_id,
+        template_id,
+        variable_values
+      ) VALUES (
+        ${deploymentId},
+        ${req.templateId},
+        ${JSON.stringify(req.variableValues)}
+      )
+    `;
+
+    return {
+      deploymentId,
+      config: {
+        ...config,
+        variables: req.variableValues,
+      },
+    };
   }
 );

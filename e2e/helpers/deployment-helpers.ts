@@ -1,5 +1,59 @@
 import { Page, expect } from '@playwright/test';
 
+export async function deployProject(
+  api: any,
+  projectId: string,
+  environment: string = 'staging',
+  options: { forceFailure?: boolean; schedule?: Date } = {}
+): Promise<{ deploymentId: string }> {
+  const response = await api.deployments.deploy({
+    projectId,
+    environment,
+    forceFailure: options.forceFailure || false,
+    scheduledFor: options.schedule?.toISOString()
+  });
+
+  return { deploymentId: response.id };
+}
+
+export async function waitForDeploymentCompletion(
+  api: any,
+  deploymentId: string,
+  timeout: number = 30000
+): Promise<{ status: string; duration: number }> {
+  const startTime = Date.now();
+  const endTime = startTime + timeout;
+
+  while (Date.now() < endTime) {
+    const status = await api.deployments.status({ deploymentId });
+    
+    if (['succeeded', 'failed', 'cancelled'].includes(status.status)) {
+      return {
+        status: status.status,
+        duration: Date.now() - startTime
+      };
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  throw new Error(`Deployment ${deploymentId} did not complete within ${timeout}ms`);
+}
+
+export async function cleanupDeployments(api: any): Promise<void> {
+  try {
+    const activeDeployments = await api.deployments.list({ status: 'running' });
+    
+    for (const deployment of activeDeployments) {
+      try {
+        await api.deployments.cancel({ deploymentId: deployment.id });
+      } catch (error) {
+      }
+    }
+  } catch (error) {
+  }
+}
+
 export class DeploymentHelpers {
   constructor(private page: Page) {}
 
