@@ -26,7 +26,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId}, ${testProjectId}, 'neon', 'aws-us-east-2', 'test-db', 'provisioning'
+          ${dbId}, ${testProjectId}, 'encore', 'aws-us-east-2', 'test-db', 'active'
         )
       `;
 
@@ -42,8 +42,8 @@ describe("Database Provisioning Integration", () => {
 
       expect(result).not.toBeNull();
       expect(result?.id).toBe(dbId);
-      expect(result?.status).toBe("provisioning");
-      expect(result?.provider).toBe("neon");
+      expect(result?.status).toBe("active");
+      expect(result?.provider).toBe("encore");
     });
 
     it("should update database status to active", async () => {
@@ -53,7 +53,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId}, ${testProjectId}, 'neon', 'aws-us-east-2', 'test-db', 'provisioning'
+          ${dbId}, ${testProjectId}, 'encore', 'aws-us-east-2', 'test-db', 'active'
         )
       `;
 
@@ -88,7 +88,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId1}, ${testProjectId}, 'neon', 'aws-us-east-2', 'duplicate-name', 'active'
+          ${dbId1}, ${testProjectId}, 'encore', 'aws-us-east-2', 'duplicate-name', 'active'
         )
       `;
 
@@ -97,7 +97,7 @@ describe("Database Provisioning Integration", () => {
           INSERT INTO provisioned_databases (
             id, project_id, provider, region, name, status
           ) VALUES (
-            ${dbId2}, ${testProjectId}, 'neon', 'aws-us-east-2', 'duplicate-name', 'active'
+            ${dbId2}, ${testProjectId}, 'encore', 'aws-us-east-2', 'duplicate-name', 'active'
           )
         `
       ).rejects.toThrow();
@@ -110,7 +110,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId}, ${testProjectId}, 'neon', 'aws-us-east-2', 'test-db', 'active'
+          ${dbId}, ${testProjectId}, 'encore', 'aws-us-east-2', 'test-db', 'active'
         )
       `;
 
@@ -133,7 +133,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId}, ${testProjectId}, 'neon', 'aws-us-east-2', 'test-db', 'active'
+          ${dbId}, ${testProjectId}, 'encore', 'aws-us-east-2', 'test-db', 'active'
         )
       `;
 
@@ -167,7 +167,7 @@ describe("Database Provisioning Integration", () => {
         INSERT INTO provisioned_databases (
           id, project_id, provider, region, name, status
         ) VALUES (
-          ${dbId}, ${testProjectId}, 'neon', 'aws-us-east-2', 'test-db', 'active'
+          ${dbId}, ${testProjectId}, 'encore', 'aws-us-east-2', 'test-db', 'active'
         )
       `;
 
