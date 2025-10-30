@@ -3,7 +3,7 @@ import db from "../db";
 import type { ProvisionedDatabase } from "./types";
 
 interface ListDatabasesRequest {
-  projectId?: string;
+  projectId?: number;
 }
 
 export const list = api(

@@ -2,7 +2,7 @@ export type DatabaseProvider = "neon" | "supabase" | "planetscale";
 export type DatabaseStatus = "provisioning" | "active" | "failed" | "deleting" | "deleted";
 
 export interface ProvisionDatabaseRequest {
-  projectId: string;
+  projectId: number;
   provider: DatabaseProvider;
   region?: string;
   name?: string;
@@ -10,7 +10,7 @@ export interface ProvisionDatabaseRequest {
 
 export interface ProvisionedDatabase {
   id: string;
-  projectId: string;
+  projectId: number;
   provider: DatabaseProvider;
   region: string;
   name: string;

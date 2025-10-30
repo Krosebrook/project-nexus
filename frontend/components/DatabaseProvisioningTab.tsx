@@ -14,11 +14,11 @@ export function DatabaseProvisioningTab() {
   const [databases, setDatabases] = useState<ProvisionedDatabase[]>([]);
   const [loading, setLoading] = useState(true);
   const [showProvisionForm, setShowProvisionForm] = useState(false);
-  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
+  const [projects, setProjects] = useState<Array<{ id: number; name: string }>>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    projectId: "",
+    projectId: 0,
     provider: "neon" as const,
     region: "aws-us-east-2",
     name: "",
@@ -47,7 +47,7 @@ export function DatabaseProvisioningTab() {
   const loadProjects = async () => {
     try {
       const response = await backend.projects.list();
-      setProjects(response.projects.map(p => ({ id: String(p.id), name: p.name })));
+      setProjects(response.projects.map(p => ({ id: p.id, name: p.name })));
     } catch (error: any) {
       console.error("Error loading projects:", error);
     }
@@ -62,7 +62,7 @@ export function DatabaseProvisioningTab() {
         description: "Your database is being provisioned. This may take a few minutes.",
       });
       setShowProvisionForm(false);
-      setFormData({ projectId: "", provider: "neon", region: "aws-us-east-2", name: "" });
+      setFormData({ projectId: 0, provider: "neon", region: "aws-us-east-2", name: "" });
       setTimeout(loadDatabases, 2000);
     } catch (error: any) {
       toast({
@@ -179,13 +179,13 @@ export function DatabaseProvisioningTab() {
           <CardContent className="space-y-4">
             <div>
               <Label htmlFor="project">Project</Label>
-              <Select value={formData.projectId} onValueChange={(value) => setFormData({ ...formData, projectId: value })}>
+              <Select value={String(formData.projectId)} onValueChange={(value) => setFormData({ ...formData, projectId: parseInt(value, 10) })}>
                 <SelectTrigger id="project">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
                   {projects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
+                    <SelectItem key={project.id} value={String(project.id)}>
                       {project.name}
                     </SelectItem>
                   ))}

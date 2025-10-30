@@ -28,7 +28,7 @@ export const provision = api(
     }
 
     const databaseId = `db_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const databaseName = name || `${projectId}_db`;
+    const databaseName = name || `proj${projectId}_db`;
 
     await db.exec`
       INSERT INTO provisioned_databases (
@@ -52,7 +52,7 @@ export const provision = api(
 
 async function provisionInBackground(
   databaseId: string,
-  projectId: string,
+  projectId: number,
   databaseName: string,
   region: string
 ): Promise<void> {
