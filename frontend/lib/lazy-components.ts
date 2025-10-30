@@ -79,3 +79,11 @@ export const LazyDeploymentTab = lazy(() =>
 export const LazySettingsTab = lazy(() =>
   import("@/components/SettingsTab").then(m => ({ default: m.SettingsTab }))
 );
+
+export const LazyEnhancedProjectCard = lazy(() =>
+  import("@/components/EnhancedProjectCard").then(m => ({ default: m.EnhancedProjectCard }))
+);
+
+export const LazyDatabaseProvisioningTab = lazy(() =>
+  import("@/components/DatabaseProvisioningTab").then(m => ({ default: m.DatabaseProvisioningTab }))
+);

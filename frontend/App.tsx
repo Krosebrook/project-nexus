@@ -1,7 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X, Database } from "lucide-react";
 import { Dashboard } from "@/components/Dashboard";
-import { DatabaseProvisioningTab } from "@/components/DatabaseProvisioningTab";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
 import { NetworkErrorBanner } from "@/components/NetworkErrorBanner";
@@ -26,6 +25,7 @@ import {
   LazyCommandPalette,
   LazyProjectDetailModal,
   LazyFirstVisitTour,
+  LazyDatabaseProvisioningTab,
 } from "@/lib/lazy-components";
 
 type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "databases" | "settings";
@@ -281,7 +281,7 @@ export default function App() {
             {activeTab === "databases" && (
               <ErrorBoundary>
                 <Suspense fallback={<TableSkeleton rows={8} />}>
-                  <DatabaseProvisioningTab />
+                  <LazyDatabaseProvisioningTab />
                 </Suspense>
               </ErrorBoundary>
             )}
