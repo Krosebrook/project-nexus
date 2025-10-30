@@ -43,6 +43,7 @@ export class Client {
     public readonly files: files.ServiceClient
     public readonly notifications: notifications.ServiceClient
     public readonly projects: projects.ServiceClient
+    public readonly provisioning: provisioning.ServiceClient
     public readonly settings: settings.ServiceClient
     public readonly snapshots: snapshots.ServiceClient
     public readonly tests: tests.ServiceClient
@@ -71,6 +72,7 @@ export class Client {
         this.files = new files.ServiceClient(base)
         this.notifications = new notifications.ServiceClient(base)
         this.projects = new projects.ServiceClient(base)
+        this.provisioning = new provisioning.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
         this.snapshots = new snapshots.ServiceClient(base)
         this.tests = new tests.ServiceClient(base)
@@ -1284,6 +1286,66 @@ export namespace projects {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_update_update>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { getConnectionInfo as api_provisioning_connection_info_getConnectionInfo } from "~backend/provisioning/connection-info";
+import { deleteDatabase as api_provisioning_delete_deleteDatabase } from "~backend/provisioning/delete";
+import { get as api_provisioning_get_get } from "~backend/provisioning/get";
+import { list as api_provisioning_list_list } from "~backend/provisioning/list";
+import { provision as api_provisioning_provision_provision } from "~backend/provisioning/provision";
+
+export namespace provisioning {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.deleteDatabase = this.deleteDatabase.bind(this)
+            this.get = this.get.bind(this)
+            this.getConnectionInfo = this.getConnectionInfo.bind(this)
+            this.list = this.list.bind(this)
+            this.provision = this.provision.bind(this)
+        }
+
+        public async deleteDatabase(params: { id: string }): Promise<ResponseType<typeof api_provisioning_delete_deleteDatabase>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/provisioning/databases/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_provisioning_delete_deleteDatabase>
+        }
+
+        public async get(params: { id: string }): Promise<ResponseType<typeof api_provisioning_get_get>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/provisioning/databases/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_provisioning_get_get>
+        }
+
+        public async getConnectionInfo(params: { id: string }): Promise<ResponseType<typeof api_provisioning_connection_info_getConnectionInfo>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/provisioning/databases/${encodeURIComponent(params.id)}/connection`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_provisioning_connection_info_getConnectionInfo>
+        }
+
+        public async list(params: RequestType<typeof api_provisioning_list_list>): Promise<ResponseType<typeof api_provisioning_list_list>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                projectId: params.projectId === undefined ? undefined : String(params.projectId),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/provisioning/databases`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_provisioning_list_list>
+        }
+
+        public async provision(params: RequestType<typeof api_provisioning_provision_provision>): Promise<ResponseType<typeof api_provisioning_provision_provision>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/provisioning/databases`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_provisioning_provision_provision>
         }
     }
 }
