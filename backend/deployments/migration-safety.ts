@@ -1,4 +1,7 @@
 import db from "../db";
+import { validateMigrationRollback as validateSqlFile } from "./rollback-validator";
+import { promises as fs } from "node:fs";
+import path from "node:path";
 
 export interface MigrationRollbackValidation {
   canRollback: boolean;
@@ -32,6 +35,19 @@ export interface MigrationDependency {
 export async function validateMigrationRollback(
   migrationVersion: string
 ): Promise<MigrationRollbackValidation> {
+  const migrationFile = path.join(
+    process.cwd(),
+    "db/migrations",
+    `${migrationVersion}.up.sql`
+  );
+
+  try {
+    await fs.access(migrationFile);
+    const sqlValidation = await validateSqlFile(migrationFile);
+    return sqlValidation;
+  } catch (fileError) {
+  }
+
   const result = await db.queryRow<{
     can_rollback: boolean;
     blocking_reasons: string[];

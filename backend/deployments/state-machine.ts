@@ -193,21 +193,25 @@ export class DeploymentStateMachine {
   });
 
   async execute(context: DeploymentContext): Promise<DeploymentLog> {
-    try {
-      await this.stateMachine.execute(context);
-      
-      const finalDeployment = await db.queryRow<DeploymentLog>`
-        SELECT * FROM deployment_logs WHERE id = ${context.deploymentId}
-      `;
-      
-      if (!finalDeployment) {
-        throw new Error("Deployment not found after completion");
-      }
-      
-      return finalDeployment;
-    } catch (error) {
-      throw error;
+    const initialDeployment = await db.queryRow<DeploymentLog>`
+      SELECT * FROM deployment_logs WHERE id = ${context.deploymentId}
+    `;
+    
+    if (!initialDeployment) {
+      throw new Error(`Deployment ${context.deploymentId} not found at start`);
     }
+
+    await this.stateMachine.execute(context);
+    
+    const finalDeployment = await db.queryRow<DeploymentLog>`
+      SELECT * FROM deployment_logs WHERE id = ${context.deploymentId}
+    `;
+    
+    if (!finalDeployment) {
+      throw new Error("Deployment not found after completion");
+    }
+    
+    return finalDeployment;
   }
 
   private async updateProgress(deploymentId: number, stage: string, progress: number): Promise<void> {
