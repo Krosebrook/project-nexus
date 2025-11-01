@@ -76,7 +76,8 @@ export function useDeploymentFeed(options: UseDeploymentFeedOptions = {}): UseDe
         params.set('projectId', projectId.toString());
       }
 
-      const url = `/notifications/deployments/events${params.toString() ? `?${params.toString()}` : ''}`;
+      const baseUrl = import.meta.env.VITE_CLIENT_TARGET || '';
+      const url = `${baseUrl}/notifications/deployments/events${params.toString() ? `?${params.toString()}` : ''}`;
       const eventSource = new EventSource(url);
 
       eventSource.onopen = () => {
