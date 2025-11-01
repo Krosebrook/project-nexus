@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS sync_conflicts (
 CREATE INDEX idx_sync_conflicts_resolution ON sync_conflicts(resolution);
 CREATE INDEX idx_sync_conflicts_created_at ON sync_conflicts(created_at);
 
-ALTER TABLE deployments ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE deployment_logs ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE deployment_artifacts ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE deployment_queue ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 0;

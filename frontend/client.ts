@@ -41,11 +41,13 @@ export class Client {
     public readonly deployments: deployments.ServiceClient
     public readonly errors: errors.ServiceClient
     public readonly files: files.ServiceClient
+    public readonly llm: llm.ServiceClient
     public readonly notifications: notifications.ServiceClient
     public readonly projects: projects.ServiceClient
     public readonly provisioning: provisioning.ServiceClient
     public readonly settings: settings.ServiceClient
     public readonly snapshots: snapshots.ServiceClient
+    public readonly sync: sync.ServiceClient
     public readonly widgets: widgets.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
@@ -69,11 +71,13 @@ export class Client {
         this.deployments = new deployments.ServiceClient(base)
         this.errors = new errors.ServiceClient(base)
         this.files = new files.ServiceClient(base)
+        this.llm = new llm.ServiceClient(base)
         this.notifications = new notifications.ServiceClient(base)
         this.projects = new projects.ServiceClient(base)
         this.provisioning = new provisioning.ServiceClient(base)
         this.settings = new settings.ServiceClient(base)
         this.snapshots = new snapshots.ServiceClient(base)
+        this.sync = new sync.ServiceClient(base)
         this.widgets = new widgets.ServiceClient(base)
     }
 
@@ -1106,6 +1110,43 @@ export namespace files {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { generate as api_llm_generate_generate } from "~backend/llm/generate";
+import { health as api_llm_health_health } from "~backend/llm/health";
+
+export namespace llm {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.generate = this.generate.bind(this)
+            this.health = this.health.bind(this)
+        }
+
+        public async generate(params: RequestType<typeof api_llm_generate_generate>): Promise<StreamIn<StreamResponse<typeof api_llm_generate_generate>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "max_tokens": params["max_tokens"] === undefined ? undefined : String(params["max_tokens"]),
+                prompt:       params.prompt,
+                provider:     params.provider === undefined ? undefined : String(params.provider),
+                temperature:  params.temperature === undefined ? undefined : String(params.temperature),
+            })
+
+            return await this.baseClient.createStreamIn(`/llm/generate`, {query})
+        }
+
+        public async health(): Promise<ResponseType<typeof api_llm_health_health>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/llm/health`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_llm_health_health>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
 import { listRecent as api_notifications_list_recent_listRecent } from "~backend/notifications/list_recent";
 import {
     getNotificationHistory as api_notifications_realtime_getNotificationHistory,
@@ -1387,6 +1428,37 @@ export namespace snapshots {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/snapshots`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_snapshots_save_save>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { pull as api_sync_pull_pull } from "~backend/sync/pull";
+import { push as api_sync_push_push } from "~backend/sync/push";
+
+export namespace sync {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.pull = this.pull.bind(this)
+            this.push = this.push.bind(this)
+        }
+
+        public async pull(params: RequestType<typeof api_sync_pull_pull>): Promise<ResponseType<typeof api_sync_pull_pull>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/sync/pull`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_sync_pull_pull>
+        }
+
+        public async push(params: RequestType<typeof api_sync_push_push>): Promise<ResponseType<typeof api_sync_push_push>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/sync/push`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_sync_push_push>
         }
     }
 }
