@@ -1,5 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from "react";
-import { Home, FolderKanban, Bot, Rocket, Settings, Menu, X, Database } from "lucide-react";
+import { useState, useEffect, Suspense } from "react";
 import { Dashboard } from "@/components/Dashboard";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ContextSnapshotFAB } from "@/components/ContextSnapshotPanel";
@@ -7,7 +6,10 @@ import { NetworkErrorBanner } from "@/components/NetworkErrorBanner";
 import { SkipToContent } from "@/components/SkipToContent";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import { useKeyboardShortcut } from "@/hooks/useKeyboardShortcut";
-import { Button } from "@/components/ui/button";
+import { useNavigation } from "@/hooks/useNavigation";
+import { useModals } from "@/hooks/useModals";
+import { AppHeader } from "@/components/AppHeader";
+import { AppNavigation } from "@/components/AppNavigation";
 import { DeploymentToast } from "@/components/DeploymentToast";
 import { Toaster } from "@/components/ui/toaster";
 import backend from "~backend/client";
@@ -30,22 +32,30 @@ import {
   LazyDatabaseProvisioningTab,
 } from "@/lib/lazy-components";
 
-type TabValue = "dashboard" | "projects" | "automation" | "deployment" | "databases" | "settings";
-
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [activeTab, setActiveTab] = useState<TabValue>("dashboard");
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [snapshotPanelOpen, setSnapshotPanelOpen] = useState(false);
-  const [deployModalOpen, setDeployModalOpen] = useState(false);
-  const [logsModalOpen, setLogsModalOpen] = useState(false);
-  const [docsPanelOpen, setDocsPanelOpen] = useState(false);
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [projectDetailModalOpen, setProjectDetailModalOpen] = useState(false);
   const [criticalProject, setCriticalProject] = useState<Project | null>(null);
+
+  const { activeTab, sidebarOpen, handleTabChange, toggleSidebar, closeSidebar } = useNavigation();
+  const {
+    settingsOpen,
+    setSettingsOpen,
+    snapshotPanelOpen,
+    setSnapshotPanelOpen,
+    deployModalOpen,
+    setDeployModalOpen,
+    logsModalOpen,
+    setLogsModalOpen,
+    docsPanelOpen,
+    setDocsPanelOpen,
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+    projectDetailModalOpen,
+    setProjectDetailModalOpen,
+    closeAllModals,
+  } = useModals();
 
   useEffect(() => {
     loadProjects();
@@ -54,14 +64,7 @@ export default function App() {
   useKeyboardShortcut([
     { key: 'k', meta: true, callback: () => setCommandPaletteOpen(true) },
     { key: 's', meta: true, callback: () => setSnapshotPanelOpen(true) },
-    { key: 'Escape', callback: () => {
-      setCommandPaletteOpen(false);
-      setSnapshotPanelOpen(false);
-      setDeployModalOpen(false);
-      setLogsModalOpen(false);
-      setDocsPanelOpen(false);
-      setProjectDetailModalOpen(false);
-    }}
+    { key: 'Escape', callback: closeAllModals }
   ]);
 
   useEffect(() => {
@@ -85,13 +88,10 @@ export default function App() {
 
   const handleProjectSelect = (project: Project) => {
     setSelectedProject(project);
-    setActiveTab("projects");
+    handleTabChange("projects");
   };
 
-  const handleTabChange = (tab: TabValue) => {
-    setActiveTab(tab);
-    setSidebarOpen(false);
-  };
+
 
   const handleCommandAction = (action: string, project?: Project) => {
     const targetProject = project || selectedProject;
@@ -122,7 +122,7 @@ export default function App() {
     const project = projects.find(p => p.id === snapshot.project_id);
     if (project) {
       setSelectedProject(project);
-      setActiveTab('projects');
+      handleTabChange('projects');
     }
     if (snapshot.urls.length > 0) {
       snapshot.urls.forEach(url => window.open(url, '_blank'));
@@ -146,15 +146,6 @@ export default function App() {
     );
   }
 
-  const navItems = [
-    { id: "dashboard" as const, label: "Dashboard", icon: Home },
-    { id: "projects" as const, label: "Projects", icon: FolderKanban },
-    { id: "automation" as const, label: "Automation", icon: Bot },
-    { id: "deployment" as const, label: "Deployment", icon: Rocket },
-    { id: "databases" as const, label: "Databases", icon: Database },
-    { id: "settings" as const, label: "Settings", icon: Settings },
-  ];
-
   return (
     <ErrorBoundary>
       <SkipToContent />
@@ -167,28 +158,7 @@ export default function App() {
           <LazyAlertBanner project={criticalProject} onViewDetails={handleAlertViewDetails} />
         </Suspense>
         
-        <nav className="border-b border-zinc-800 bg-black/50 backdrop-blur-sm sticky top-0 z-50">
-          <div className="flex items-center justify-between px-4 h-16">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              >
-                {sidebarOpen ? <X /> : <Menu />}
-              </Button>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">
-                PROJECT NEXUS
-              </h1>
-            </div>
-            <div className="flex items-center gap-2" data-tour="settings">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-xs font-medium">
-                UN
-              </div>
-            </div>
-          </div>
-        </nav>
+        <AppHeader sidebarOpen={sidebarOpen} onToggleSidebar={toggleSidebar} />
 
         <div className="flex">
           <aside
@@ -199,38 +169,13 @@ export default function App() {
             `}
             data-tour="projects"
           >
-            <nav className="p-4 space-y-2">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleTabChange(item.id)}
-                    className={`
-                      w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200
-                      ${isActive
-                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                        : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
-                      }
-                    `}
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-label={`Navigate to ${item.label}`}
-                    tabIndex={isActive ? 0 : -1}
-                  >
-                    <Icon className="w-5 h-5" aria-hidden="true" />
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              })}
-            </nav>
+            <AppNavigation activeTab={activeTab} onTabChange={handleTabChange} />
           </aside>
 
           {sidebarOpen && (
             <div
               className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-              onClick={() => setSidebarOpen(false)}
+              onClick={closeSidebar}
             />
           )}
 
@@ -345,7 +290,7 @@ export default function App() {
             projects={projects}
             onSelectProject={(project) => {
               setSelectedProject(project);
-              setActiveTab('projects');
+              handleTabChange('projects');
             }}
             onAction={handleCommandAction}
           />
