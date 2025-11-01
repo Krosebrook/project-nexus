@@ -44,7 +44,7 @@ import { ConflictResolutionModal } from './components/ConflictResolutionModal';
 - **Storage Monitoring** warns at 80% quota
 
 ### ✅ LLM Integration
-- **Multi-Provider:** Claude → Gemini → Ollama fallback
+- **Multi-Provider:** Claude → Gemini fallback
 - **SSE Streaming:** Real-time response chunks
 - **Rate Limiting:** 10 requests/minute per user
 - **Smart Routing:** Auto-selects best provider
@@ -248,7 +248,7 @@ for (const c of conflicts) {
 
 ### LLM Rate Limit
 - Wait 60 seconds for reset
-- Switch to `ollama` provider for local inference
+- Switch to `gemini` provider as fallback
 - Reduce request frequency
 
 ## Documentation

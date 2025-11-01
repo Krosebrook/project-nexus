@@ -7,7 +7,7 @@ This deployment platform is built as a **production-grade, offline-first web app
 - **Frontend:** React + TypeScript + Dexie.js (IndexedDB)
 - **Backend:** Encore.ts + PostgreSQL
 - **Real-Time Sync:** HTTP-based polling + CRDT conflict resolution
-- **LLM Integration:** Claude/Gemini/Ollama with SSE streaming
+- **LLM Integration:** Claude/Gemini with SSE streaming
 
 ## Key Features
 
@@ -331,7 +331,7 @@ for (const conflict of conflicts) {
 
 **Solution:**
 - Wait 60 seconds for rate limit reset
-- Use `ollama` provider for local inference
+- Use `gemini` provider as fallback
 - Reduce request frequency
 
 ## Best Practices

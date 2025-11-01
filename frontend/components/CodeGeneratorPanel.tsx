@@ -11,7 +11,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export function CodeGeneratorPanel() {
   const [prompt, setPrompt] = useState('');
-  const [provider, setProvider] = useState<'auto' | 'claude' | 'gemini' | 'ollama'>('auto');
+  const [provider, setProvider] = useState<'auto' | 'claude' | 'gemini'>('auto');
   const [copied, setCopied] = useState(false);
 
   const { stream, cancel, isStreaming, output, error } = useLLMStream({
@@ -70,7 +70,6 @@ export function CodeGeneratorPanel() {
                   <SelectItem value="auto">Auto (Smart Routing)</SelectItem>
                   <SelectItem value="claude">Claude Sonnet 4</SelectItem>
                   <SelectItem value="gemini">Gemini Pro</SelectItem>
-                  <SelectItem value="ollama">Ollama (Local)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

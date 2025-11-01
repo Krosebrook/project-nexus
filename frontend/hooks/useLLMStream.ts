@@ -13,7 +13,7 @@ export function useLLMStream(options?: UseLLMStreamOptions) {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const stream = useCallback(
-    async (prompt: string, provider: 'claude' | 'gemini' | 'ollama' | 'auto' = 'auto') => {
+    async (prompt: string, provider: 'claude' | 'gemini' | 'auto' = 'auto') => {
       setIsStreaming(true);
       setOutput('');
       setError(null);

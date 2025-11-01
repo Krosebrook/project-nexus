@@ -55,7 +55,6 @@ private checkRateLimit(userId: string) {
 - ✅ API keys stored in Encore secrets (not in code)
 - ✅ `ANTHROPIC_API_KEY` for Claude
 - ✅ `GOOGLE_AI_API_KEY` for Gemini
-- ✅ `OLLAMA_URL` for local Ollama instance
 - ✅ Never exposed to frontend
 
 **Implementation:**

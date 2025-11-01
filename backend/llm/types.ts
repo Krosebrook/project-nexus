@@ -1,6 +1,6 @@
 export interface LLMRequest {
   prompt: string;
-  provider?: 'claude' | 'gemini' | 'ollama' | 'auto';
+  provider?: 'claude' | 'gemini' | 'auto';
   temperature?: number;
   max_tokens?: number;
 }

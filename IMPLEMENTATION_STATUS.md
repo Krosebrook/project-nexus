@@ -60,7 +60,7 @@ const { mutate } = useOptimisticMutation({
 ### 4. LLM Router Backend Service
 **Location:** `/backend/llm/router.ts`
 
-- ✅ Multi-provider support (Claude, Gemini, Ollama)
+- ✅ Multi-provider support (Claude, Gemini)
 - ✅ Smart auto-routing based on prompt analysis
 - ✅ Fallback chain: Claude → Gemini → Ollama
 - ✅ Rate limiting (10 req/min per user)

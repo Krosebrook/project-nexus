@@ -3,7 +3,6 @@ import { secret } from 'encore.dev/config';
 
 const claudeApiKey = secret('ANTHROPIC_API_KEY');
 const geminiApiKey = secret('GOOGLE_AI_API_KEY');
-const ollamaUrl = secret('OLLAMA_URL');
 
 interface LLMProvider {
   name: string;
@@ -34,35 +33,11 @@ export class LLMRouter {
       cost_tier: 'medium',
       capabilities: ['code-generation', 'analysis', 'documentation'],
     });
-
-    try {
-      const url = ollamaUrl();
-      if (url) {
-        const response = await fetch(`${url}/api/tags`);
-        if (response.ok) {
-          const data: any = await response.json();
-          this.providers.set('ollama', {
-            name: 'Ollama Local',
-            available: data.models && data.models.length > 0,
-            cost_tier: 'free',
-            capabilities: ['code-generation', 'qa'],
-          });
-        }
-      }
-    } catch (error) {
-      console.warn('[LLMRouter] Ollama not available:', error);
-      this.providers.set('ollama', {
-        name: 'Ollama Local',
-        available: false,
-        cost_tier: 'free',
-        capabilities: ['code-generation', 'qa'],
-      });
-    }
   }
 
   async *generate(
     prompt: string,
-    provider: 'claude' | 'gemini' | 'ollama' | 'auto',
+    provider: 'claude' | 'gemini' | 'auto',
     temperature: number,
     maxTokens: number,
     userId: string
@@ -81,8 +56,6 @@ export class LLMRouter {
           return yield* this.generateClaude(prompt, temperature, maxTokens);
         case 'gemini':
           return yield* this.generateGemini(prompt, temperature, maxTokens);
-        case 'ollama':
-          return yield* this.generateOllama(prompt, temperature, maxTokens);
         default:
           throw APIError.invalidArgument(`Unknown provider: ${selectedProvider}`);
       }
@@ -92,16 +65,13 @@ export class LLMRouter {
       if (selectedProvider === 'claude' && this.providers.get('gemini')?.available) {
         console.log('[LLMRouter] Falling back to Gemini');
         return yield* this.generateGemini(prompt, temperature, maxTokens);
-      } else if ((selectedProvider === 'claude' || selectedProvider === 'gemini') && this.providers.get('ollama')?.available) {
-        console.log('[LLMRouter] Falling back to Ollama');
-        return yield* this.generateOllama(prompt, temperature, maxTokens);
       }
 
       throw error;
     }
   }
 
-  private selectProvider(prompt: string): 'claude' | 'gemini' | 'ollama' {
+  private selectProvider(prompt: string): 'claude' | 'gemini' {
     const codeKeywords = ['function', 'class', 'import', 'const', 'async', 'refactor'];
     const hasCode = codeKeywords.some(kw => prompt.toLowerCase().includes(kw));
 
@@ -113,7 +83,7 @@ export class LLMRouter {
       return 'gemini';
     }
 
-    return 'ollama';
+    throw APIError.internal('No LLM providers available');
   }
 
   private async *generateClaude(prompt: string, temperature: number, maxTokens: number): AsyncGenerator<string> {
@@ -216,52 +186,7 @@ export class LLMRouter {
     }
   }
 
-  private async *generateOllama(prompt: string, temperature: number, maxTokens: number): AsyncGenerator<string> {
-    const url = ollamaUrl();
-    if (!url) {
-      throw APIError.internal('Ollama URL not configured');
-    }
 
-    const response = await fetch(`${url}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'codellama:latest',
-        prompt,
-        stream: true,
-        options: {
-          temperature,
-          num_predict: maxTokens,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      throw APIError.internal(`Ollama error: ${response.statusText}`);
-    }
-
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim());
-
-      for (const line of lines) {
-        try {
-          const json = JSON.parse(line);
-          if (json.response) {
-            yield json.response;
-          }
-        } catch (error) {
-          console.warn('[LLMRouter] Failed to parse Ollama chunk:', line);
-        }
-      }
-    }
-  }
 
   private checkRateLimit(userId: string) {
     const now = Date.now();
