@@ -46,44 +46,27 @@ export async function updateDeploymentStage(
   logs?: string,
   stateSnapshot?: Record<string, unknown>
 ) {
-  if (logs && stateSnapshot) {
-    await database.exec`
-      UPDATE deployment_logs
-      SET 
-        stage = ${stage}, 
-        progress = ${progress}, 
-        logs = COALESCE(logs, '') || ${logs},
-        state_snapshot = ${JSON.stringify(stateSnapshot)}::jsonb,
-        updated_at = NOW()
-      WHERE id = ${deploymentId}
-    `;
-  } else if (logs) {
-    await database.exec`
-      UPDATE deployment_logs
-      SET 
-        stage = ${stage}, 
-        progress = ${progress}, 
-        logs = COALESCE(logs, '') || ${logs},
-        updated_at = NOW()
-      WHERE id = ${deploymentId}
-    `;
-  } else if (stateSnapshot) {
-    await database.exec`
-      UPDATE deployment_logs
-      SET 
-        stage = ${stage}, 
-        progress = ${progress}, 
-        state_snapshot = ${JSON.stringify(stateSnapshot)}::jsonb,
-        updated_at = NOW()
-      WHERE id = ${deploymentId}
-    `;
-  } else {
-    await database.exec`
-      UPDATE deployment_logs
-      SET stage = ${stage}, progress = ${progress}, updated_at = NOW()
-      WHERE id = ${deploymentId}
-    `;
+  const updates: string[] = ["stage = $2", "progress = $3", "updated_at = NOW()"];
+  const params: any[] = [deploymentId, stage, progress];
+  let paramIndex = 4;
+
+  if (logs) {
+    updates.push(`logs = COALESCE(logs, '') || $${paramIndex++}`);
+    params.push(logs);
   }
+
+  if (stateSnapshot) {
+    updates.push(`state_snapshot = $${paramIndex++}::jsonb`);
+    params.push(JSON.stringify(stateSnapshot));
+  }
+
+  const query = `
+    UPDATE deployment_logs
+    SET ${updates.join(", ")}
+    WHERE id = $1
+  `;
+
+  await database.rawExec(query, ...params);
 }
 
 export async function completeDeployment(deploymentId: number, status: 'success' | 'failure') {

@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import backend from "~backend/client";
 import type { Project } from "~backend/projects/types";
+import { useGenericCRUD } from "./useGenericCRUD";
 
 export function useProjects() {
   return useQuery({
@@ -22,51 +23,74 @@ export function useProject(id: number) {
   });
 }
 
+const projectCRUD = {
+  queryKey: ["projects"],
+  listFn: async () => {
+    const response = await backend.projects.list();
+    return response.projects;
+  },
+  getFn: async (id: number) => backend.projects.get({ id }),
+  createFn: async (data: { name: string; description?: string; status?: string }) =>
+    backend.projects.create(data),
+  updateFn: async (data: {
+    id: number;
+    name?: string;
+    description?: string;
+    status?: "active" | "development" | "maintenance" | "archived";
+    health_score?: number;
+    metrics?: Record<string, any>;
+  }) => backend.projects.update(data),
+  deleteFn: async (id: number) => {
+    await backend.projects.deleteProject({ id });
+  },
+};
+
 export function useCreateProject() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { name: string; description?: string; status?: string }) => {
-      return await backend.projects.create(data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    }
-  });
-}
-
-export function useUpdateProject() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { 
-      id: number; 
-      name?: string; 
-      description?: string; 
+  const crud = useGenericCRUD<
+    Project,
+    { name: string; description?: string; status?: string },
+    {
+      name?: string;
+      description?: string;
       status?: "active" | "development" | "maintenance" | "archived";
       health_score?: number;
       metrics?: Record<string, any>;
-    }) => {
-      return await backend.projects.update(data);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["projects", variables.id] });
-    }
-  });
+    number
+  >(projectCRUD);
+  return crud.create!;
+}
+
+export function useUpdateProject() {
+  const crud = useGenericCRUD<
+    Project,
+    { name: string; description?: string; status?: string },
+    {
+      name?: string;
+      description?: string;
+      status?: "active" | "development" | "maintenance" | "archived";
+      health_score?: number;
+      metrics?: Record<string, any>;
+    },
+    number
+  >(projectCRUD);
+  return crud.update!;
 }
 
 export function useDeleteProject() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: number) => {
-      await backend.projects.deleteProject({ id });
+  const crud = useGenericCRUD<
+    Project,
+    { name: string; description?: string; status?: string },
+    {
+      name?: string;
+      description?: string;
+      status?: "active" | "development" | "maintenance" | "archived";
+      health_score?: number;
+      metrics?: Record<string, any>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    }
-  });
+    number
+  >(projectCRUD);
+  return crud.delete!;
 }
 
 export function useProjectMetrics(projectId: number) {

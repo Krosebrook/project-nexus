@@ -1,43 +1,54 @@
 import { APIError } from "encore.dev/api";
 import db from "./index";
 
-export async function validateProjectExists(projectId: number): Promise<void> {
-  const result = await db.queryAll<{ exists: boolean }>`
-    SELECT EXISTS(SELECT 1 FROM projects WHERE id = ${projectId})
-  `;
+export async function validateEntityExists(
+  table: string,
+  id: number,
+  entityName: string = "entity"
+): Promise<void> {
+  const query = `SELECT EXISTS(SELECT 1 FROM ${table} WHERE id = $1)`;
+  const result = await db.rawQueryAll(query, id);
   if (!result[0]?.exists) {
-    throw APIError.notFound("project not found");
+    throw APIError.notFound(`${entityName} not found`);
   }
+}
+
+export async function validateUniqueName(
+  table: string,
+  name: string,
+  errorMessage: string = "entity with this name already exists",
+  excludeId?: number
+): Promise<void> {
+  let query: string;
+  let params: any[];
+  
+  if (excludeId) {
+    query = `SELECT EXISTS(SELECT 1 FROM ${table} WHERE name = $1 AND id != $2)`;
+    params = [name, excludeId];
+  } else {
+    query = `SELECT EXISTS(SELECT 1 FROM ${table} WHERE name = $1)`;
+    params = [name];
+  }
+  
+  const result = await db.rawQueryAll(query, ...params);
+  
+  if (result[0]?.exists) {
+    throw APIError.alreadyExists(errorMessage);
+  }
+}
+
+export async function validateProjectExists(projectId: number): Promise<void> {
+  await validateEntityExists("projects", projectId, "project");
 }
 
 export async function validateProjectName(name: string, excludeId?: number): Promise<void> {
-  const result = excludeId
-    ? await db.queryAll<{ exists: boolean }>`
-        SELECT EXISTS(SELECT 1 FROM projects WHERE name = ${name} AND id != ${excludeId})
-      `
-    : await db.queryAll<{ exists: boolean }>`
-        SELECT EXISTS(SELECT 1 FROM projects WHERE name = ${name})
-      `;
-  
-  if (result[0]?.exists) {
-    throw APIError.alreadyExists("project with this name already exists");
-  }
+  await validateUniqueName("projects", name, "project with this name already exists", excludeId);
 }
 
 export async function validateTestCaseExists(testId: number): Promise<void> {
-  const result = await db.queryAll<{ exists: boolean }>`
-    SELECT EXISTS(SELECT 1 FROM test_cases WHERE id = ${testId})
-  `;
-  if (!result[0]?.exists) {
-    throw APIError.notFound("test case not found");
-  }
+  await validateEntityExists("test_cases", testId, "test case");
 }
 
 export async function validateAlertRuleExists(alertId: number): Promise<void> {
-  const result = await db.queryAll<{ exists: boolean }>`
-    SELECT EXISTS(SELECT 1 FROM alert_rules WHERE id = ${alertId})
-  `;
-  if (!result[0]?.exists) {
-    throw APIError.notFound("alert rule not found");
-  }
+  await validateEntityExists("alert_rules", alertId, "alert rule");
 }
