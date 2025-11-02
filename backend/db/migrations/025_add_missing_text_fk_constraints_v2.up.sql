@@ -191,14 +191,6 @@ SELECT add_fk_if_possible(
   'SET NULL', true
 );
 
--- Only add migration_rollback_audit FK if table exists
-SELECT add_fk_if_possible(
-  'public', 'migration_rollback_audit', 'initiated_by',
-  'users', 'user_id',
-  'migration_rollback_audit_initiated_by_fkey',
-  'SET NULL', true
-);
-
 -- Cleanup: Drop helper functions after use
 DROP FUNCTION IF EXISTS add_fk_if_possible(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN);
 DROP FUNCTION IF EXISTS table_exists_ci(TEXT, TEXT);

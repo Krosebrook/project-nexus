@@ -27,8 +27,7 @@ BEGIN
         'deployment_schedules_created_by_fkey',
         'database_backups_created_by_fkey',
         'backup_restore_history_restored_by_fkey',
-        'artifact_versions_created_by_fkey',
-        'migration_rollback_audit_initiated_by_fkey'
+        'artifact_versions_created_by_fkey'
       )
   LOOP
     EXECUTE format(
@@ -62,8 +61,7 @@ BEGIN
         'idx_deployment_schedules_created_by_fk',
         'idx_database_backups_created_by_fk',
         'idx_backup_restore_history_restored_by_fk',
-        'idx_artifact_versions_created_by_fk',
-        'idx_migration_rollback_audit_initiated_by_fk'
+        'idx_artifact_versions_created_by_fk'
       )
   LOOP
     EXECUTE format(
