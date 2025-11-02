@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { APIError } from "encore.dev/api";
 
 export const ProjectSchema = z.object({
   name: z.string().min(1).max(255),
@@ -120,4 +121,90 @@ export function validateSchemaAsync<T>(schema: z.ZodSchema<T>, data: unknown): P
 export function isValidSchema<T>(schema: z.ZodSchema<T>, data: unknown): boolean {
   const result = schema.safeParse(data);
   return result.success;
+}
+
+export function validateAndThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const errors = result.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(", ");
+    throw APIError.invalidArgument(`Validation failed: ${errors}`);
+  }
+  return result.data;
+}
+
+export function validateId(id: number, fieldName: string = "id"): number {
+  if (!Number.isInteger(id) || id <= 0) {
+    throw APIError.invalidArgument(`${fieldName} must be a positive integer`);
+  }
+  return id;
+}
+
+export function validateString(value: string, fieldName: string, minLength: number = 1, maxLength?: number): string {
+  if (!value || typeof value !== 'string') {
+    throw APIError.invalidArgument(`${fieldName} is required and must be a string`);
+  }
+  if (value.trim().length < minLength) {
+    throw APIError.invalidArgument(`${fieldName} must be at least ${minLength} character(s)`);
+  }
+  if (maxLength && value.length > maxLength) {
+    throw APIError.invalidArgument(`${fieldName} must be at most ${maxLength} character(s)`);
+  }
+  return value.trim();
+}
+
+export function validateEmail(email: string): string {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    throw APIError.invalidArgument("Invalid email address");
+  }
+  return email;
+}
+
+export function validateEnum<T extends string>(
+  value: string,
+  validValues: readonly T[],
+  fieldName: string
+): T {
+  if (!validValues.includes(value as T)) {
+    throw APIError.invalidArgument(
+      `${fieldName} must be one of: ${validValues.join(", ")}`
+    );
+  }
+  return value as T;
+}
+
+export function validateRange(
+  value: number,
+  min: number,
+  max: number,
+  fieldName: string
+): number {
+  if (value < min || value > max) {
+    throw APIError.invalidArgument(
+      `${fieldName} must be between ${min} and ${max}`
+    );
+  }
+  return value;
+}
+
+export function validateArray<T>(
+  value: unknown,
+  fieldName: string,
+  minLength?: number,
+  maxLength?: number
+): T[] {
+  if (!Array.isArray(value)) {
+    throw APIError.invalidArgument(`${fieldName} must be an array`);
+  }
+  if (minLength !== undefined && value.length < minLength) {
+    throw APIError.invalidArgument(
+      `${fieldName} must have at least ${minLength} item(s)`
+    );
+  }
+  if (maxLength !== undefined && value.length > maxLength) {
+    throw APIError.invalidArgument(
+      `${fieldName} must have at most ${maxLength} item(s)`
+    );
+  }
+  return value as T[];
 }

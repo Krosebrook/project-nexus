@@ -1,31 +1,28 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import backend from "~backend/client";
+import { useBaseQuery, useBaseMutation } from "./useBaseQuery";
 
 export function useDeployments(projectId?: number) {
-  return useQuery({
-    queryKey: projectId ? ["deployments", { projectId }] : ["deployments"],
-    queryFn: async () => {
-      return [];
-    }
-  });
+  return useBaseQuery(
+    projectId ? ["deployments", String(projectId)] : ["deployments"],
+    async () => [],
+    { showErrorToast: false }
+  );
 }
 
 export function useDeploymentStatus(deploymentId: number) {
-  return useQuery({
-    queryKey: ["deployments", deploymentId, "status"],
-    queryFn: async () => {
-      return await backend.deployments.status({ id: deploymentId });
-    },
-    enabled: !!deploymentId,
-    refetchInterval: 5000
-  });
+  return useBaseQuery(
+    ["deployments", String(deploymentId), "status"],
+    async () => backend.deployments.status({ id: deploymentId }),
+    {
+      enabled: !!deploymentId,
+      refetchInterval: 5000,
+    }
+  );
 }
 
 export function useCreateDeployment() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
+  return useBaseMutation(
+    async (data: {
       project_id: number;
       environment_id: number;
       checklist: {
@@ -33,21 +30,18 @@ export function useCreateDeployment() {
         breaking_changes_documented: boolean;
         migrations_ready: boolean;
       };
-    }) => {
-      return await backend.deployments.deploy(data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["deployments"] });
+    }) => backend.deployments.deploy(data),
+    {
+      successMessage: "Deployment created successfully",
+      invalidateQueries: [["deployments"]],
     }
-  });
+  );
 }
 
 export function useDeploymentLogs(projectId: number) {
-  return useQuery({
-    queryKey: ["deployments", projectId, "logs"],
-    queryFn: async () => {
-      return await backend.deployments.logs({ project_id: projectId });
-    },
-    enabled: !!projectId
-  });
+  return useBaseQuery(
+    ["deployments", String(projectId), "logs"],
+    async () => backend.deployments.logs({ project_id: projectId }),
+    { enabled: !!projectId }
+  );
 }

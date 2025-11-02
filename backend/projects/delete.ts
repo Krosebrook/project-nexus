@@ -1,5 +1,5 @@
-import { api, APIError } from "encore.dev/api";
-import db from "../db";
+import { api } from "encore.dev/api";
+import { projectService } from "./service";
 
 export interface DeleteProjectRequest {
   id: number;
@@ -12,14 +12,7 @@ export interface DeleteProjectResponse {
 export const deleteProject = api<DeleteProjectRequest, DeleteProjectResponse>(
   { method: "DELETE", path: "/projects/:id", expose: true },
   async (req) => {
-    const result = await db.queryRow<{ id: number }>`
-      DELETE FROM projects WHERE id = ${req.id} RETURNING id
-    `;
-
-    if (!result) {
-      throw APIError.notFound("project not found");
-    }
-
+    await projectService.delete(req.id);
     return { success: true };
   }
 );

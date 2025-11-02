@@ -1249,18 +1249,12 @@ export namespace projects {
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_delete_deleteProject>
         }
 
-        /**
-         * Retrieves a single project by ID.
-         */
         public async get(params: { id: number }): Promise<ResponseType<typeof api_projects_get_get>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/projects/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_projects_get_get>
         }
 
-        /**
-         * Retrieves all projects, ordered by last activity.
-         */
         public async list(): Promise<ResponseType<typeof api_projects_list_list>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/projects`, {method: "GET", body: undefined})
@@ -1276,9 +1270,6 @@ export namespace projects {
             return await this.baseClient.createStreamIn(`/projects/${encodeURIComponent(params.project_id)}/metrics/stream`, {query})
         }
 
-        /**
-         * Updates project metadata.
-         */
         public async update(params: RequestType<typeof api_projects_update_update>): Promise<ResponseType<typeof api_projects_update_update>> {
             // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
             const body: Record<string, any> = {
